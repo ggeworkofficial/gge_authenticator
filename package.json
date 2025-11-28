@@ -4,6 +4,10 @@
   "description": "",
   "main": "index.js",
   "scripts": {
+    "db:migration:generate": "cd db_config && sequelize-cli migration:generate --name",
+    "db:migrate": "cd db_config && sequelize-cli db:migrate",
+    "db:migrate:undo": "cd db_config && sequelize-cli db:migrate:undo",
+    "db:migrate:undo:all": "cd db_config && sequelize-cli db:migrate:undo:all",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
