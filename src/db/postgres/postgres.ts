@@ -15,7 +15,7 @@ export class Postgres {
       username: process.env.DB_USER,
       password: process.env.DB_PASSWORD,
       logging: false,
-      models: [path.join(__dirname, "..", "models")], // Auto-load all models
+      models: [path.join(__dirname, "..", "models/postgres")], // Auto-load all models
     });
   }
 
