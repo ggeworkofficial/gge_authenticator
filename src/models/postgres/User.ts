@@ -47,6 +47,20 @@ export class User extends Model<User> {
   @Column({ type: DataType.STRING })
   avatarUrl?: string;
 
+  @AllowNull(true)
+  @Column({ type: DataType.DATEONLY, field: "date_of_birth" })
+  dateOfBirth?: Date;
+
+  @Default(false)
+  @AllowNull(false)
+  @Column({ type: DataType.BOOLEAN, field: "is_admin" })
+  isAdmin!: boolean;
+
+  @Default(false)
+  @AllowNull(false)
+  @Column({ type: DataType.BOOLEAN, field: "is_verified" })
+  isVerified!: boolean;
+
   @CreatedAt
   @Column({ field: "created_at" })
   createdAt!: Date;
