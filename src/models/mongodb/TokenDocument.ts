@@ -1,4 +1,4 @@
-import { MongoDB } from "../../db/mongodb/mongodb";
+import { MongoDB } from "../../connection/mongodb";
 
 const mongodb = MongoDB.getInstance();
 
