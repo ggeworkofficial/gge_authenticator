@@ -1,3 +1,5 @@
 /node_modules
 .env
 /db_config/config
+/dist
+/logs
