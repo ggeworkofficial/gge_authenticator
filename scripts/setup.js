@@ -12,14 +12,30 @@ console.log("======================================");
 const envPath = path.join(__dirname, "..", ".env");
 
 if (!fs.existsSync(envPath)) {
-  fs.writeFileSync(envPath, "PORT=5000\n", "utf8");
+  const envContent =
+    `PORT=5000
+DB_PORT=PORT_HERE
+DB_NAME=DB_NAME_HERE
+DB_USER=USER_HERE
+DB_PASSWORD=PASSWORD_HERE
+
+# MongoDB
+MONGO_URI=MONGO_REPLICA_SET_URI_HERE
+MONGO_DB_NAME=DB_NAME_HERE
+
+# Redis
+REDIS_HOST=REDIS_HOST_HERE
+REDIS_PORT=REDIS_PORT_HERE
+`;
+
+  fs.writeFileSync(envPath, envContent, "utf8");
   console.log("✔ Created .env file");
 } else {
   console.log("✔ .env already exists");
 }
 
 // -------------------------------
-// 2. Create db_config/config directory
+// 2. Create db_config/config directory + config.json
 // -------------------------------
 const configDir = path.join(__dirname, "..", "db_config", "config");
 
@@ -32,10 +48,27 @@ const configFile = path.join(configDir, "config.json");
 if (!fs.existsSync(configFile)) {
   const defaultConfig = {
     development: {
-      username: "YOUR_DB_USERNAME",
-      password: "YOUR_DB_PASSWORD",
-      database: "gge_auth",
-      host: "localhost",
+      username: "DEV_USER_HERE",
+      password: "DEV_PASSWORD_HERE",
+      database: "DEV_DB_HERE",
+      host: "HOST_HERE",
+      port: 5432,
+      dialect: "postgres"
+    },
+    test: {
+      username: "TEST_USER_HERE",
+      password: "TEST_PASSWORD_HERE",
+      database: "TEST_DB_HERE",
+      host: "HOST_HERE",
+      port: 5432,
+      dialect: "postgres"
+    },
+    production: {
+      username: "PROD_USER_HERE",
+      password: "PROD_PASSWORD_HERE",
+      database: "PROD_DB_HERE",
+      host: "HOST_HERE",
+      port: 5432,
       dialect: "postgres"
     }
   };
@@ -58,15 +91,15 @@ try {
 }
 
 // -------------------------------
-// 4. Final instructions
+// 4. Final message
 // -------------------------------
 console.log("======================================");
 console.log("   Setup Complete! 🎉");
 console.log("======================================\n");
 
 console.log("You can now edit:");
-console.log("  - .env → update PORT or add secrets");
-console.log("  - db_config/config/config.json → set PostgreSQL credentials\n");
+console.log("  - .env → update PORT / secrets");
+console.log("  - config.json → update DB credentials\n");
 
 console.log("Run the development server:");
 console.log("  npm run dev\n");
