@@ -37,7 +37,7 @@ export class User extends Model<User> {
 
   @AllowNull(true)
   @Column({ type: DataType.TEXT })
-  passwordHash?: string;
+  password_hash?: string;
 
   @AllowNull(true)
   @Column({ type: DataType.STRING })
@@ -45,7 +45,7 @@ export class User extends Model<User> {
 
   @AllowNull(true)
   @Column({ type: DataType.STRING })
-  avatarUrl?: string;
+  avatar_url?: string;
 
   @AllowNull(true)
   @Column({ type: DataType.DATEONLY, field: "date_of_birth" })
