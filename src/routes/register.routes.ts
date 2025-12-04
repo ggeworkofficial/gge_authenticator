@@ -1,10 +1,10 @@
 import { Router } from "express";
-import { validate } from "../middlewares/validator";
-import { registerSchema } from "../validators/registerValidator";
+import { validateBody } from "../middlewares/validator";
+import { registerSchema } from "../validators/auth.validator";
 
 const router = Router();
 
-router.post("/register", validate(registerSchema), (req, res) => {
+router.post("/register", validateBody(registerSchema), (req, res) => {
   res.json({ message: "Registration validation passed" });
 });
 
