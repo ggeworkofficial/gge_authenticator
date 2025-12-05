@@ -34,6 +34,12 @@ module.exports = {
         defaultValue: Sequelize.literal('NOW()'),
         allowNull: false
       }
+      ,
+      updated_at: {
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('NOW()'),
+        allowNull: false
+      }
     });
   },
 
