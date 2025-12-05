@@ -37,28 +37,28 @@ export class UserDevice extends Model<UserDevice> {
   @ForeignKey(() => User)
   @AllowNull(false)
   @Column({ type: DataType.UUID })
-  userId!: string;
+  user_id!: string;
 
   @BelongsTo(() => User)
   user!: User;
 
   @AllowNull(true)
   @Column({ type: DataType.STRING(255) })
-  deviceName?: string;
+  device_name?: string;
 
   @AllowNull(false)
   @Default("browser")
   @Column({ type: DataType.STRING(255) })
-  deviceType!: string;
+  device_type!: string;
 
   @AllowNull(false)
-  @Column({ type: DataType.STRING(255) })
-  deviceId!: string;
+  @Column({ type: DataType.UUID })
+  device_id!: string;
 
   @AllowNull(true)
   @Default(DataType.NOW)
   @Column({ type: DataType.DATE })
-  lastActiveAt?: Date;
+  last_active_at?: Date;
 
   @CreatedAt
   @Column({ type: DataType.DATE })
