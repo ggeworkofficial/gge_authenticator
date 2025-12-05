@@ -41,6 +41,12 @@ module.exports = {
         defaultValue: Sequelize.literal('NOW()'),
         allowNull: false
       }
+      ,
+      updated_at: {
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('NOW()'),
+        allowNull: false
+      }
     });
 
     // Optional: unique constraint per user + device_id

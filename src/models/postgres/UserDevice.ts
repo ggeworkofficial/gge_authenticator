@@ -9,6 +9,7 @@ import {
   ForeignKey,
   BelongsTo,
   CreatedAt,
+  UpdatedAt,
   AllowNull,
   Unique,
 } from "sequelize-typescript";
@@ -60,6 +61,10 @@ export class UserDevice extends Model<UserDevice> {
   lastActiveAt?: Date;
 
   @CreatedAt
-  @Column({ field: "created_at" })
-  createdAt!: Date;
+  @Column({ type: DataType.DATE })
+  created_at!: Date;
+
+  @UpdatedAt
+  @Column({ type: DataType.DATE })
+  updated_at!: Date;
 }
