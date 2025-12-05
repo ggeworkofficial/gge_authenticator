@@ -31,7 +31,7 @@ export class App extends Model<App> {
 
   @AllowNull(false)
   @Column({ type: DataType.STRING(150) })
-  displayName!: string;
+  display_name!: string;
 
   @AllowNull(true)
   @Column({ type: DataType.TEXT })
@@ -39,18 +39,18 @@ export class App extends Model<App> {
 
   @AllowNull(true)
   @Column({ type: DataType.TEXT })
-  iconUrl?: string;
+  icon_url?: string;
 
   @AllowNull(false)
   @Default(true)
   @Column({ type: DataType.BOOLEAN })
-  isActive!: boolean;
+  is_active!: boolean;
 
   @CreatedAt
-  @Column({ field: "created_at" })
-  createdAt!: Date;
+  @Column({ type: DataType.DATE })
+  created_at!: Date;
 
   @UpdatedAt
-  @Column({ field: "updated_at" })
-  updatedAt!: Date;
+  @Column({ type: DataType.DATE })
+  updated_at!: Date;
 }
