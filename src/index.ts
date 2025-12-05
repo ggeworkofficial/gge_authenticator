@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import { errorHandler } from "./middlewares/errorHandler";
 import authRoutes from "./routes/auth.routes";
 import userRoutes from "./routes/user.routes";
 import appRoutes from "./routes/apps.routes";
@@ -19,6 +20,7 @@ app.use("/users", userRoutes);
 app.use("/apps", appRoutes);
 app.use("/sessions", sessionRoutes);
 app.use("/devices", deviceRoutes);
+app.use(errorHandler);
 
 // Test route
 app.get("/", (req, res) => {
