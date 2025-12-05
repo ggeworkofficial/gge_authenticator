@@ -24,5 +24,6 @@ export const appsFilterQuerySchema = Joi.object({
 
 // App ID param
 export const appIdParam = Joi.object({
-  id: Joi.string().uuid().required(),
-});
+  id: Joi.string().uuid(),
+  name: Joi.string().max(100),
+}).xor("id", "name");
