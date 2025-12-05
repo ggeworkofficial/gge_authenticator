@@ -1,7 +1,11 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import authRoutes from "./routes/register.routes";
+import authRoutes from "./routes/auth.routes";
+import userRoutes from "./routes/user.routes";
+import appRoutes from "./routes/apps.routes";
+import sessionRoutes from "./routes/sessions.routes";
+import deviceRoutes from "./routes/devices.routes";
 import "reflect-metadata";
 
 dotenv.config();
@@ -11,6 +15,10 @@ app.use(express.json());
 app.use(cors());
 
 app.use("/auth", authRoutes);
+app.use("/users", userRoutes);
+app.use("/apps", appRoutes);
+app.use("/sessions", sessionRoutes);
+app.use("/devices", deviceRoutes);
 
 // Test route
 app.get("/", (req, res) => {

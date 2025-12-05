@@ -26,7 +26,7 @@ export const sessionIdParam = Joi.object({
 }).xor("id", "user_id");
 
 // Filter
-export const sessionQuerySchema = Joi.object({
+export const sessionFilterSchema = Joi.object({
     session_id: Joi.string().uuid(),
     user_id: Joi.string().uuid(),
     app_id: Joi.string().uuid(),
