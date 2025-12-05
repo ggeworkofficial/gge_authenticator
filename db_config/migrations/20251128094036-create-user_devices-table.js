@@ -29,7 +29,7 @@ module.exports = {
         defaultValue: 'browser' // default to browser, later desktop/mobile
       },
       device_id: {
-        type: Sequelize.STRING,
+        type: Sequelize.UUID,
         allowNull: false      // unique identifier for this device/session
       },
       last_active_at: {
