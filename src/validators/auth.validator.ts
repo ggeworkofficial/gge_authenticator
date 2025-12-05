@@ -2,9 +2,15 @@ import Joi from "joi";
 import { commonCreateDeviceSchema } from "./device.validator";
 import { createUserSchema } from "./user.validator";
 
+export const tokenttl = Joi.object({
+    accessTokenTtl: Joi.number().integer().min(60).required(),
+    refreshTokenttl: Joi.number().integer().min(60).required(),
+});
+
 export const registerSchema = Joi.object({
     ... createUserSchema.describe().keys,
     ... commonCreateDeviceSchema.describe().keys,
+    ... tokenttl.describe().keys,
     app_name: Joi.string().uuid().required(),
 });
 
@@ -12,6 +18,7 @@ export const loginSchema = Joi.object({
     email: Joi.string().email().required(),
     password_hash: Joi.string().min(8).required(),
     ... commonCreateDeviceSchema.describe().keys,
+    ... tokenttl.describe().keys,
     app_id: Joi.string().uuid().required(),
 });
 
