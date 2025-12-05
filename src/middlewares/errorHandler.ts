@@ -1,5 +1,5 @@
 import { Request, Response, NextFunction } from "express";
-import { AppError } from "../errors/app.error"; 
+import { MainError } from "../errors/main.error"; 
 
 export const errorHandler = (
   err: any,
@@ -8,7 +8,7 @@ export const errorHandler = (
   next: NextFunction
 ) => {
   // If the error is an instance of AppError, use its properties
-  const isAppError = err instanceof AppError;
+  const isAppError = err instanceof MainError;
 
   const statusCode = isAppError ? err.statusCode : 500;
   const errorType = isAppError ? err.name : "InternalServerError";

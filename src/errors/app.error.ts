@@ -1,12 +1,7 @@
-export class AppError extends Error {
-  public statusCode: number;
-  public details?: any;
+import { MainError } from "./main.error";
 
-  constructor(message: string, statusCode = 400, details?: any) {
-    super(message);
-    this.name = this.constructor.name; // automatically set class name
-    this.statusCode = statusCode;
-    this.details = details;
-    Error.captureStackTrace(this, this.constructor);
-  }
+export class AppCreateError extends MainError {
+    constructor(message: string, details?: any) {
+        super(message, 400, details);
+    }
 }
