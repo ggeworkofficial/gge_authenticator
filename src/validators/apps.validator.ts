@@ -20,7 +20,7 @@ export const updateAppSchema = Joi.object({
 export const appsFilterQuerySchema = Joi.object({
   user_id: Joi.string().uuid(),
   device_id: Joi.string().uuid(),
-}).or("user_id", "device_id");
+});
 
 // App ID param
 export const appIdParam = Joi.object({
