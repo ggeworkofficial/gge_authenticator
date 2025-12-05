@@ -62,10 +62,10 @@ export class User extends Model<User> {
   isVerified!: boolean;
 
   @CreatedAt
-  @Column({ field: "created_at" })
-  createdAt!: Date;
+  @Column({ type: DataType.DATE })
+  created_at!: Date;
 
   @UpdatedAt
-  @Column({ field: "updated_at" })
-  updatedAt!: Date;
+  @Column({ type: DataType.DATE})
+  updated_at!: Date;
 }
