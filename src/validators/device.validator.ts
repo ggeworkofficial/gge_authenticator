@@ -1,0 +1,28 @@
+import Joi from "joi";
+
+export const commonCreateDeviceSchema = Joi.object({
+  device_id: Joi.string().uuid().required(),
+  device_name: Joi.string().required(),
+  device_type: Joi.string().valid("browser", "mobile", "desktop").required(),
+});
+
+export const createDeviceSchema = Joi.object({
+  user_id: Joi.string().uuid().required(),
+  ... commonCreateDeviceSchema.describe().keys,
+});
+
+export const updateDeviceSchema = Joi.object({
+  device_name: Joi.string(),
+  device_type: Joi.string().valid("browser", "mobile", "desktop"),
+  last_active_at: Joi.date().iso(),
+}).min(1);
+
+export const deviceIdParam = Joi.object({
+  id: Joi.string().uuid().required(),
+});
+
+// Filter
+export const deviceFilterSchema = Joi.object({
+  device_id: Joi.string().uuid(),
+  user_id: Joi.string().uuid(),
+}).xor("device_id", "user_id");
