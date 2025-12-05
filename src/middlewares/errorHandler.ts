@@ -8,16 +8,16 @@ export const errorHandler = (
   res: Response,
   next: NextFunction
 ) => {
-  // If the error is an instance of AppError, use its properties
-  const isAppError = err instanceof MainError;
 
-  const statusCode = isAppError ? err.statusCode : 500;
-  const errorType = isAppError ? err.name : "InternalServerError";
-  const message = isAppError ? err.message : "Something went wrong";
+  const isMainError = err instanceof MainError;
+
+  const statusCode = isMainError ? err.statusCode : 500;
+  const errorType = isMainError ? err.name : "InternalServerError";
+  const message = isMainError ? err.message : "Something went wrong";
 
   const logger = Logger.getLogger();
   logger.error(
-    `${errorType}: ${message} ${isAppError && err.details ? `| Details: ${JSON.stringify(err.details)}` : ""
+    `${errorType}: ${message} ${isMainError && err.details ? `| Details: ${JSON.stringify(err.details)}` : ""
     }`
   );
 
