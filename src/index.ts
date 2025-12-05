@@ -8,6 +8,9 @@ import appRoutes from "./routes/apps.routes";
 import sessionRoutes from "./routes/sessions.routes";
 import deviceRoutes from "./routes/devices.routes";
 import "reflect-metadata";
+import { Logger } from "./utils/logger";
+
+const logger = Logger.getLogger();
 
 dotenv.config();
 
@@ -29,5 +32,5 @@ app.get("/", (req, res) => {
 
 const PORT = process.env.PORT
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+  logger.info(`Server running on port ${PORT}`);
 });
