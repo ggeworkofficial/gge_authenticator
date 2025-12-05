@@ -49,17 +49,17 @@ export class User extends Model<User> {
 
   @AllowNull(true)
   @Column({ type: DataType.DATEONLY, field: "date_of_birth" })
-  dateOfBirth?: Date;
+  date_of_birth?: Date;
 
   @Default(false)
   @AllowNull(false)
   @Column({ type: DataType.BOOLEAN, field: "is_admin" })
-  isAdmin!: boolean;
+  is_admin!: boolean;
 
   @Default(false)
   @AllowNull(false)
   @Column({ type: DataType.BOOLEAN, field: "is_verified" })
-  isVerified!: boolean;
+  is_verified!: boolean;
 
   @CreatedAt
   @Column({ type: DataType.DATE })
