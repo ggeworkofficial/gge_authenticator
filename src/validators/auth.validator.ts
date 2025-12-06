@@ -8,19 +8,19 @@ export const tokenttl = Joi.object({
 });
 
 export const registerSchema = Joi.object({
-    ... createUserSchema.describe().keys,
-    ... commonCreateDeviceSchema.describe().keys,
-    ... tokenttl.describe().keys,
     app_name: Joi.string().uuid().required(),
-});
+})
+.concat(createUserSchema)
+.concat(commonCreateDeviceSchema)
+.concat(tokenttl);
 
 export const loginSchema = Joi.object({
     email: Joi.string().email().required(),
     password_hash: Joi.string().min(8).required(),
-    ... commonCreateDeviceSchema.describe().keys,
-    ... tokenttl.describe().keys,
     app_id: Joi.string().uuid().required(),
-});
+})
+.concat(commonCreateDeviceSchema)
+.concat(tokenttl);
 
 export const refreshSchema = Joi.object({
     refresh_token: Joi.string().required(),
