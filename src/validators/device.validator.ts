@@ -24,4 +24,4 @@ export const deviceIdParam = Joi.object({
 export const deviceFilterSchema = Joi.object({
   device_id: Joi.string().uuid(),
   user_id: Joi.string().uuid(),
-}).xor("device_id", "user_id");
+}).or("device_id", "user_id");

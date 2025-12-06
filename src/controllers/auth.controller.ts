@@ -29,13 +29,24 @@ export const loginController = async (req: Request, res: Response, next: NextFun
     let deviceResp;
     try {
       deviceResp = await axios.post(`${base}/devices`, devicePayload);
+      
     } catch (err: any) {
         if (err.response) {
             const { status, data } = err.response;
 
             if (data?.errorType === "DeviceCreateError" && data?.message === "Device already exists") {
                 logger.info("Device already exists, continuing login...");
-                deviceResp = { data: { device: { device_id: devicePayload.device_id, existing: true } } };
+                const existingResp = await axios.get(
+                    `${base}/devices`,
+                    { params: { user_id: user.id, device_id: payload.device_id } }
+                );
+
+                const existingDevice = (existingResp.data as any).devices?.[0];
+                if (!existingDevice) {
+                    return next(new MainError("Existing device record not found", 500));
+                }
+
+                deviceResp = { data: { device: existingDevice } };
             } else {
                 return next(err);
             }
