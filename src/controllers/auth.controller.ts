@@ -4,7 +4,6 @@ import { AuthService } from "../services/auth.service";
 import { MainError } from "../errors/main.error";
 import { Logger } from "../utils/logger";
 
-
 const logger = Logger.getLogger();
 
 const getBaseUrl = () => process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
@@ -87,13 +86,52 @@ export const loginController = async (req: Request, res: Response, next: NextFun
     const app = (appResp.data as any).app;
     if (!app) return next(new MainError("App not found", 404, { app_id: payload.app_id }));
 
-    // Respond with gathered ids
-    res.status(200).json({
-      user_id: user.id,
-      device_pm_id: device.id,
-      device_id: device.device_id,
-      app_id: app.id,
-    });
+    // Create session via internal API POST /sessions
+    try {
+      const sessionPayload: any = {
+        user_id: user.id,
+        app_id: app.id,
+        device_id: device.device_id || device.id,
+        client_type: payload.device_type || "browser",
+      };
+
+      if (payload.accessTokenTtl) sessionPayload.accessTokenTtl = payload.accessTokenTtl;
+      if (payload.refreshTokenttl) sessionPayload.refreshTokenttl = payload.refreshTokenttl;
+
+      let sessionResp;
+      try {
+        sessionResp = await axios.post(`${base}/sessions`, sessionPayload);
+      } catch (err: any) {
+        const apiError = err?.response?.data;
+
+        if (apiError?.errorType) {
+          const mappedError = new MainError(apiError.message, err.response?.status || 400, apiError.details);
+          mappedError.name = apiError.errorType;
+          return next(mappedError);
+        }
+
+        if (err.response?.data) {
+          return next(err.response.data);
+        }
+
+        return next(err);
+      }
+
+      if (!sessionResp || !sessionResp.data) return next(new MainError("Session creation failed", 500));
+
+      const sess = sessionResp.data as any;
+
+      res.status(200).json({
+        user_id: user.id,
+        device_pm_id: device.id,
+        device_id: device.device_id,
+        app_id: app.id,
+        // include the entire sessions response payload
+        ...sess,
+      });
+    } catch (err) {
+      return next(err);
+    }
   } catch (error) {
     next(error);
   }

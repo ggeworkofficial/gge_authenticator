@@ -1,23 +1,11 @@
 import { Router } from "express";
-import {
-  createSessionSchema,
-  updateSessionSchema,
-  sessionIdParam,
-  sessionFilterSchema,
-} from "../validators/sessions.validator";
-import { validateBody, validateQuery, validateParams } from "../middlewares/validator";
+import { validateBody } from "../middlewares/validator";
+import { createSessionSchema } from "../validators/sessions.validator";
+import { createSessionController } from "../controllers/sessions.controller";
 
 const router = Router();
 
-
-router.post("/", validateBody(createSessionSchema));
-router.get("/", validateQuery(sessionFilterSchema));
-router.get("/:id", validateParams(sessionIdParam));
-router.put(
-    "/:id", 
-    validateParams(sessionIdParam), 
-    validateBody(updateSessionSchema)
-);
-router.delete("/", validateQuery(sessionFilterSchema));
+// POST /sessions -> create session via controller
+router.post("/", validateBody(createSessionSchema), createSessionController);
 
 export default router;
