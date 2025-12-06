@@ -2,35 +2,38 @@ import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
 import { errorHandler } from "./middlewares/errorHandler";
-import authRoutes from "./routes/auth.routes";
-import userRoutes from "./routes/user.routes";
-import appRoutes from "./routes/apps.routes";
-import sessionRoutes from "./routes/sessions.routes";
-import deviceRoutes from "./routes/devices.routes";
 import "reflect-metadata";
 import { Logger } from "./utils/logger";
+import { MongoDB } from "./connections/mongodb";
+
+const mongodb = MongoDB.getInstance();
 
 const logger = Logger.getLogger();
 
 dotenv.config();
+async function start() {
+  await mongodb.connect();
 
-const app = express();
-app.use(express.json());
-app.use(cors());
+  const app = express();
+  app.use(express.json());
+  app.use(cors());
 
-app.use("/auth", authRoutes);
-app.use("/users", userRoutes);
-app.use("/apps", appRoutes);
-app.use("/sessions", sessionRoutes);
-app.use("/devices", deviceRoutes);
-app.use(errorHandler);
+  const authRoutes = (await import("./routes/auth.routes")).default;
+  const userRoutes = (await import("./routes/user.routes")).default;
+  const appRoutes = (await import("./routes/apps.routes")).default;
+  const sessionRoutes = (await import("./routes/sessions.routes")).default;
+  const deviceRoutes = (await import("./routes/devices.routes")).default;
 
-// Test route
-app.get("/", (req, res) => {
-  res.json({ message: "GGE Authenticator API is running" });
-});
+  app.use("/auth", authRoutes);
+  app.use("/users", userRoutes);
+  app.use("/apps", appRoutes);
+  app.use("/sessions", sessionRoutes);
+  app.use("/devices", deviceRoutes);
+  app.use(errorHandler);
 
-const PORT = process.env.PORT
-app.listen(PORT, () => {
-  logger.info(`Server running on port ${PORT}`);
-});
+  const PORT = process.env.PORT;
+  app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+}
+
+start();
+
