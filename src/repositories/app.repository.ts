@@ -1,4 +1,5 @@
 import { App } from "../models/postgres/App";
+import { UserApp } from "../models/postgres/UserApp";
 import { Transaction } from "sequelize";
 
 export class AppRepository {
@@ -35,5 +36,9 @@ export class AppRepository {
 
   public async findByName(name: string, transaction?: Transaction): Promise<App | null> {
     return App.findOne({ where: { name }, transaction });
+  }
+
+  public async createUserApp(user_id: string, app_id: string, transaction?: Transaction): Promise<UserApp> {
+    return UserApp.create({ user_id, app_id } as any, { transaction });
   }
 }

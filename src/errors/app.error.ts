@@ -29,3 +29,15 @@ export class AppDeleteError extends MainError {
         super(message, 400, details);
     }
 }
+
+export class AppUserCreateError extends MainError {
+    constructor(message: string, details?: any) {
+        super(message, 400, details);
+    }
+}
+
+export class AppUserExistsError extends MainError {
+    constructor(message: string, details?: any) {
+        super(message, 409, details);
+    }
+}

@@ -6,21 +6,25 @@ import {
   AppUpdateError,
   AppDeleteError,
 } from "../errors/app.error";
+import { AppUserCreateError, AppUserExistsError } from "../errors/app.error";
 import { App } from "../models/postgres/App";
 import { AppRepository } from "../repositories/app.repository";
+import { UserApp } from "../models/postgres/UserApp";
+import { UserRepository } from "../repositories/user.repository";
 
 
 export class AppService {
-  private repo = new AppRepository();
+  private appRepo = new AppRepository();
+  private userRepo = new UserRepository();
 
   async createApp(appData: App): Promise<App> {
     const db = Postgres.getInstance();
     const transaction = await db.getTransaction();
     try {
-      const existingApp = await this.repo.findByName(appData.name!, transaction);
+      const existingApp = await this.appRepo.findByName(appData.name!, transaction);
       if (existingApp) throw new AppCreateError("App already exists", { name: appData.name });
 
-      const app = await this.repo.create(appData, transaction);
+      const app = await this.appRepo.create(appData, transaction);
       await transaction.commit();
       return app;
     } catch (error) {
@@ -29,11 +33,39 @@ export class AppService {
     }
   }
 
+  async createUserApp(user_id: string, app_id: string): Promise<UserApp> {
+    const db = Postgres.getInstance();
+    const tx = await db.getTransaction();
+    try {
+      // check if already exists
+      const existing = await UserApp.findOne({ where: { user_id: user_id, app_id: app_id }, transaction: tx });
+      if (existing) {
+        throw new AppUserExistsError("User is already linked to this app", { userId: user_id, appId: app_id });
+      }
+      const user = await this.userRepo.findById(user_id, tx);
+      if (!user) {
+        throw new AppUserExistsError("User not found", { userId: user_id, appId: app_id });
+      }
+      const app = await this.appRepo.findById(app_id, tx);
+      if (!app) {
+        throw new AppUserExistsError("App not found", { userId: user_id, appId: app_id });
+      }
+
+      const userApp = await this.appRepo.createUserApp(user_id, app_id, tx);
+      await tx.commit();
+      return userApp;
+    } catch (error) {
+      await tx.rollback();
+      if (error instanceof AppUserExistsError) throw error;
+      throw new AppUserCreateError("Failed to create user-app link", { userId: user_id, appId: app_id, cause: error });
+    }
+  }
+
   async getAppById(id: string): Promise<App> {
     const db = Postgres.getInstance();
     const transaction = await db.getTransaction();
     try {
-      const app = await this.repo.findById(id, transaction);
+      const app = await this.appRepo.findById(id, transaction);
       if (!app) throw new AppFindError("App not found", { id });
       await transaction.commit();
       return app;
@@ -48,7 +80,7 @@ export class AppService {
     const db = Postgres.getInstance();
     const transaction = await db.getTransaction();
     try {
-      const apps = await this.repo.findAll(filter, transaction);
+      const apps = await this.appRepo.findAll(filter, transaction);
       await transaction.commit();
       return apps;
     } catch (error) {
@@ -61,7 +93,7 @@ export class AppService {
     const db = Postgres.getInstance();
     const transaction = await db.getTransaction();
     try {
-      const updated = await this.repo.update(id, data, transaction);
+      const updated = await this.appRepo.update(id, data, transaction);
       if (!updated) throw new AppUpdateError("App not found", { id });
       await transaction.commit();
       return updated;
@@ -76,7 +108,7 @@ export class AppService {
     const db = Postgres.getInstance();
     const transaction = await db.getTransaction();
     try {
-      const deleted = await this.repo.delete(id, transaction);
+      const deleted = await this.appRepo.delete(id, transaction);
       if (!deleted) throw new AppDeleteError("App not found", { id });
       await transaction.commit();
       return deleted;

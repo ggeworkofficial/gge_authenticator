@@ -38,12 +38,12 @@ export class UserApp extends Model<UserApp> {
   @ForeignKey(() => User)
   @AllowNull(false)
   @Column({ type: DataType.UUID })
-  userId!: string;
+  user_id!: string;
 
   @ForeignKey(() => App)
   @AllowNull(false)
   @Column({ type: DataType.UUID })
-  appId!: string;
+  app_id!: string;
 
   @BelongsTo(() => User)
   user!: User;

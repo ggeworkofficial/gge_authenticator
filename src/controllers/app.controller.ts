@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { AppService } from "../services/app.service";
+import { UserApp } from "../models/postgres/UserApp";
 
 
 export const appCreateController = async (req: Request, res: Response, next: NextFunction) => {
@@ -54,6 +55,17 @@ export const appDeleteController = async (req: Request, res: Response, next: Nex
         const appService = new AppService();
         await appService.deleteApp(id);
         res.status(204).send();
+    } catch (error) {
+        next(error);
+    }
+};
+
+export const appCreateUserController = async (req: Request, res: Response, next: NextFunction) => {
+    const { user_id, app_id } = req.body;
+    try {
+        const appService = new AppService();
+        const userApp: UserApp = await appService.createUserApp(user_id, app_id);
+        res.status(201).json({ userApp });
     } catch (error) {
         next(error);
     }
