@@ -19,9 +19,8 @@ export const updateSessionSchema = Joi.object({
 }).min(1);
 
 export const sessionIdParam = Joi.object({
-    user_id: Joi.string().uuid(),
-    id: Joi.string().uuid(),
-}).xor("id", "user_id");
+    id: Joi.string().required(),
+});
 
 // Filter
 export const sessionFilterSchema = Joi.object({

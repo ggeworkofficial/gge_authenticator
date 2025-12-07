@@ -22,6 +22,67 @@ export const createSessionController = async (req: Request, res: Response, next:
   }
 };
 
+export const listSessionsController = async (req: Request, res: Response, next: NextFunction) => {
+  const filter = req.query as any;
+  try {
+    const svc = new SessionService();
+    const rows = await svc.listSessions(filter);
+    res.status(200).json({ sessions: rows });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const getSessionController = async (req: Request, res: Response, next: NextFunction) => {
+  const id = req.params.id as string;
+  try {
+    const svc = new SessionService();
+    const row = await svc.getSessionById(id);
+    res.status(200).json({ session: row });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const updateSessionController = async (req: Request, res: Response, next: NextFunction) => {
+  const id = req.params.id as string;
+  const body = req.body as any;
+  try {
+    const svc = new SessionService();
+    const updated = await svc.updateSession(id, body);
+    res.status(200).json({ session: updated });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteSessionsController = async (req: Request, res: Response, next: NextFunction) => {
+  const filter = req.query as any;
+  try {
+    const svc = new SessionService();
+    const deleted = await svc.deleteSessionsByFilter(filter);
+    res.status(200).json({ deleted });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const deleteSessionByIdController = async (req: Request, res: Response, next: NextFunction) => {
+  const id = req.params.id as string;
+  try {
+    const svc = new SessionService();
+    const deleted = await svc.deleteSessionById(id);
+    res.status(200).json({ deleted });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export default {
   createSessionController,
+  listSessionsController,
+  getSessionController,
+  updateSessionController,
+  deleteSessionsController,
+  deleteSessionByIdController,
 };
