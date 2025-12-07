@@ -201,3 +201,19 @@ export const registerController = async (req: Request, res: Response, next: Next
     next(error);
   }
 };
+
+export const changePasswordController = async (req: Request, res: Response, next: NextFunction) => {
+  const payload = req.body as any;
+  console.log("changePasswordController payload:", req.body);
+  try {
+    const service = new AuthService();
+    const updated = await service.changePassword({
+      user_id: payload.user_id,
+      old_password_hash: payload.old_password_hash,
+      new_password_hash: payload.new_password_hash,
+    } as any);
+    res.status(200).json({ user: updated });
+  } catch (err) {
+    next(err);
+  }
+};
