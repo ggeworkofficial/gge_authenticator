@@ -8,7 +8,7 @@ export const tokenttl = Joi.object({
 });
 
 export const registerSchema = Joi.object({
-    app_name: Joi.string().uuid().required(),
+    app_id: Joi.string().uuid().required(),
 })
 .concat(createUserSchema)
 .concat(commonCreateDeviceSchema)

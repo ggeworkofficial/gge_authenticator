@@ -136,3 +136,68 @@ export const loginController = async (req: Request, res: Response, next: NextFun
     next(error);
   }
 };
+
+export const registerController = async (req: Request, res: Response, next: NextFunction) => {
+  const payload = req.body as any;
+  const base = getBaseUrl();
+  try {
+    // 1) create user via internal users API
+    let createResp;
+    try {
+      // forward user-related fields to /users
+      const userPayload = {
+        email: payload.email,
+        password_hash: payload.password_hash,
+        username: payload.username,
+        phone: payload.phone,
+        avatar_url: payload.avatar_url,
+        date_of_birth: payload.date_of_birth,
+        is_admin: payload.is_admin,
+        is_verified: payload.is_verified,
+      };
+      createResp = await axios.post(`${base}/users`, userPayload);
+    } catch (err: any) {
+      const apiError = err?.response?.data;
+      if (apiError?.errorType) {
+        const mappedError = new MainError(apiError.message, err.response?.status || 400, apiError.details);
+        mappedError.name = apiError.errorType;
+        return next(mappedError);
+      }
+      if (err.response?.data) return next(err.response.data);
+      return next(err);
+    }
+
+    if (!createResp || !createResp.data) return next(new MainError("User creation failed", 500));
+    const createdUser = (createResp.data as any)?.user || createResp.data;
+
+    // 2) call login endpoint with email/password to obtain tokens and session
+    try {
+      const loginPayload: any = {
+        email: createdUser.email || payload.email,
+        password_hash: payload.password_hash,
+        app_id: payload.app_id,
+        device_id: payload.device_id,
+        device_name: payload.device_name,
+        device_type: payload.device_type,
+      };
+
+      if (payload.accessTokenTtl) loginPayload.accessTokenTtl = payload.accessTokenTtl;
+      if (payload.refreshTokenttl) loginPayload.refreshTokenttl = payload.refreshTokenttl;
+
+      const loginResp = await axios.post(`${base}/auth/login`, loginPayload);
+      // forward the login response as-is
+      return res.status(loginResp.status || 200).json(loginResp.data);
+    } catch (err: any) {
+      const apiError = err?.response?.data;
+      if (apiError?.errorType) {
+        const mappedError = new MainError(apiError.message, err.response?.status || 400, apiError.details);
+        mappedError.name = apiError.errorType;
+        return next(mappedError);
+      }
+      if (err.response?.data) return next(err.response.data);
+      return next(err);
+    }
+  } catch (error) {
+    next(error);
+  }
+};
