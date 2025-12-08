@@ -31,3 +31,32 @@ export class PasswordMatchError extends MainError {
     this.name = "PasswordMismatchError";
   }
 }
+
+export class AccessTokenError extends MainError {
+    constructor(message = "Access token error", details?: any) {
+        super(message, 400, details);
+        this.name = "AccessTokenError";
+    }
+}
+
+export class AccessTokenExpiredError extends MainError {
+  constructor(message = "Access token expired", details?: any) {
+    super(message, 401, details);
+    this.name = "AccessTokenExpiredError";
+  }
+}
+
+export class RefreshTokenExpiredError extends MainError {
+  constructor(message = "Refresh token expired", details?: any) {
+    super(message, 401, details);
+    this.name = "RefreshTokenExpiredError";
+  }
+}
+
+export class RefreshTokenNotFoundError extends MainError {
+  constructor(message = "Refresh token not found", details?: any) {
+    super(message, 404, details);
+    this.name = "RefreshTokenNotFoundError";
+  }
+}
+

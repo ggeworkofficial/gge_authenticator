@@ -24,8 +24,19 @@ export const loginSchema = Joi.object({
 
 export const refreshSchema = Joi.object({
     refresh_token: Joi.string().required(),
+    user_id: Joi.string().uuid().required(),
     device_id: Joi.string().uuid().required(),
     app_id: Joi.string().uuid().required(),
+    accessTokenTtl: Joi.number().integer().min(60).optional(),
+});
+
+export const authenticateSchema = Joi.object({
+    access_token: Joi.string().required(),
+    refresh_token: Joi.string().required(),
+    user_id: Joi.string().uuid().required(),
+    device_id: Joi.string().uuid().required(),
+    app_id: Joi.string().uuid().required(),
+    accessTokenTtl: Joi.number().integer().min(60).optional(),
 });
 
 export const changePasswordSchema = Joi.object({

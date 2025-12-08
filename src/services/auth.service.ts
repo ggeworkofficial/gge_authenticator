@@ -2,7 +2,17 @@ import bcrypt from "bcrypt";
 import { AuthRepository } from "../repositories/auth.repository";
 import { Postgres } from "../connections/postgres";
 import { User } from "../models/postgres/User";
-import { UserNotFoundError, IncorrectPasswordError, PasswordChangeError, PasswordMatchError } from "../errors/auth.error";
+import jwt from "jsonwebtoken";
+import {
+  UserNotFoundError,
+  IncorrectPasswordError,
+  PasswordChangeError,
+  PasswordMatchError,
+  AccessTokenExpiredError,
+  RefreshTokenExpiredError,
+  RefreshTokenNotFoundError,
+  AccessTokenError,
+} from "../errors/auth.error";
 
 type LoginPayload = {
   email: string;
@@ -11,6 +21,10 @@ type LoginPayload = {
 
 export class AuthService {
   private repo = new AuthRepository();
+
+  private ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET || "access-secret";
+  private REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || "refresh-secret";
+  private ACCESS_TTL = Number(process.env.ACCESS_TOKEN_TTL) || 900;
 
   /** Authenticate user and return the user instance */
   async login(payload: LoginPayload): Promise<User> {
@@ -34,6 +48,49 @@ export class AuthService {
       await tx.rollback();
       throw error;
     }
+  }
+
+  /** Verify access token. If expired, throw AccessTokenExpiredError. */
+  public async authenticate(accessToken: string) {
+    try {
+      const decoded = jwt.verify(accessToken, this.ACCESS_SECRET) as any;
+      return decoded;
+    } catch (err: any) {
+      if (err && err.name === "TokenExpiredError") throw new AccessTokenExpiredError("Access token expired", { cause: err });
+      if (err && err.name === "JsonWebTokenError") throw new AccessTokenError("Access token invalid", { cause: err });
+      throw err;
+    }
+  }
+
+  /** Refresh access token using refresh token (must match stored session). */
+  public async refresh(params: { refresh_token: string; user_id: string; device_id: string; app_id: string; accessTtl?: number }) {
+    const { refresh_token, user_id, device_id, app_id, accessTtl } = params;
+
+    // find session by refresh token
+    const session = await this.repo.findSessionByRefreshToken(refresh_token);
+    if (!session) throw new RefreshTokenNotFoundError("Refresh token session not found", { user_id, device_id, app_id });
+
+    // verify the refresh token
+    try {
+      jwt.verify(refresh_token, this.REFRESH_SECRET);
+    } catch (err: any) {
+      if (err && err.name === "TokenExpiredError") {
+        throw new RefreshTokenExpiredError("Refresh token expired", { user_id, device_id, app_id });
+      }
+      throw err;
+    }
+
+    // generate new access token
+    const now = Math.floor(Date.now() / 1000);
+    const ttl = typeof accessTtl === "number" && !isNaN(accessTtl) ? accessTtl : this.ACCESS_TTL;
+    const accessExp = now + ttl;
+    const accessToken = jwt.sign({ sub: user_id, app: app_id, device: device_id, type: "access" }, this.ACCESS_SECRET, { expiresIn: ttl });
+    const accessTokenExpiresAt = new Date(accessExp * 1000);
+
+    // persist new access token to session
+    await this.repo.updateAccessTokenForSession(user_id, device_id, app_id, accessToken, accessTokenExpiresAt);
+
+    return { access_token: accessToken, access_token_expires_at: accessTokenExpiresAt };
   }
 
   /** Change a user's password. Verifies the old password then updates to the new hash. */

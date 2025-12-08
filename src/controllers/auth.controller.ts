@@ -3,6 +3,7 @@ import axios from "axios";
 import { AuthService } from "../services/auth.service";
 import { MainError } from "../errors/main.error";
 import { Logger } from "../utils/logger";
+import { AccessTokenExpiredError } from "../errors/auth.error";
 
 const logger = Logger.getLogger();
 
@@ -97,7 +98,6 @@ export const loginController = async (req: Request, res: Response, next: NextFun
 
       if (payload.accessTokenTtl) sessionPayload.accessTokenTtl = payload.accessTokenTtl;
       if (payload.refreshTokenttl) sessionPayload.refreshTokenttl = payload.refreshTokenttl;
-
       let sessionResp;
       try {
         sessionResp = await axios.post(`${base}/sessions`, sessionPayload);
@@ -213,6 +213,88 @@ export const changePasswordController = async (req: Request, res: Response, next
       new_password_hash: payload.new_password_hash,
     } as any);
     res.status(200).json({ user: updated });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const authenticateController = async (req: Request, res: Response, next: NextFunction) => {
+  const payload = req.body as any;
+  const base = getBaseUrl();
+  try {
+    const service = new AuthService();
+    // Try to validate access token
+    try {
+      const decoded = await service.authenticate(payload.access_token);
+      // If valid, respond with authenticate schema
+      // decode exp to date if available
+      const exp = (decoded && (decoded as any).exp) ? new Date((decoded as any).exp * 1000) : undefined;
+      return res.status(200).json({
+        access_token: payload.access_token,
+        refresh_token: payload.refresh_token,
+        user_id: payload.user_id,
+        device_id: payload.device_id,
+        app_id: payload.app_id,
+        access_token_expires_at: exp,
+      });
+    } catch (err: any) {
+      // If access token expired, forward to /auth/refresh
+      if (err instanceof AccessTokenExpiredError) {
+        try {
+          const refreshBody: any = {
+            refresh_token: payload.refresh_token,
+            user_id: payload.user_id,
+            device_id: payload.device_id,
+            app_id: payload.app_id,
+          };
+          if (payload.accessTokenTtl) refreshBody.accessTokenTtl = payload.accessTokenTtl;
+
+          const refreshResp = await axios.post(`${base}/auth/refresh`, refreshBody);
+
+          // include refreshed access token in authenticate response
+          const newAccess = (refreshResp.data as any).access_token;
+          const accessExpiresAt = (refreshResp.data as any).access_token_expires_at;
+
+          return res.status(200).json({
+            access_token: newAccess,
+            refresh_token: payload.refresh_token,
+            user_id: payload.user_id,
+            device_id: payload.device_id,
+            app_id: payload.app_id,
+            access_token_expires_at: accessExpiresAt,
+          });
+        } catch (err2: any) {
+          const apiError = err2?.response?.data;
+          if (apiError?.errorType) {
+            const mappedError = new MainError(apiError.message, err2.response?.status || 400, apiError.details);
+            mappedError.name = apiError.errorType;
+            return next(mappedError);
+          }
+          if (err2.response?.data) return next(err2.response.data);
+          return next(err2);
+        }
+      }
+
+      return next(err);
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const refreshController = async (req: Request, res: Response, next: NextFunction) => {
+  const payload = req.body as any;
+  try {
+    const service = new AuthService();
+    const result = await service.refresh({
+      refresh_token: payload.refresh_token,
+      user_id: payload.user_id,
+      device_id: payload.device_id,
+      app_id: payload.app_id,
+      accessTtl: payload.accessTokenTtl ? Number(payload.accessTokenTtl) : undefined,
+    });
+
+    res.status(200).json(result);
   } catch (err) {
     next(err);
   }

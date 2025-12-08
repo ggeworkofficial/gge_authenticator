@@ -20,7 +20,7 @@ export class SessionService {
     accessTtl?: number;
     refreshTtl?: number;
   }) {
-    const { userId, appId, deviceId, clientType = "browser", accessTtl = Number(process.env.ACCESS_TOKEN_TTL) || 900, refreshTtl = Number(process.env.REFRESH_TOKEN_TTL) || 604800 } = params;
+    const { userId, appId, deviceId, clientType = "browser", accessTtl = (params.accessTtl) ? params.accessTtl : Number(process.env.ACCESS_TOKEN_TTL) || 900, refreshTtl = (params.refreshTtl) ? params.refreshTtl : Number(process.env.REFRESH_TOKEN_TTL) || 604800 } = params;
 
     if (!userId || !appId || !deviceId) {
       throw new SessionValidationError("userId, appId and deviceId are required");
@@ -28,10 +28,9 @@ export class SessionService {
 
     try {
       const now = Math.floor(Date.now() / 1000);
-
       const accessExp = now + accessTtl;
       const refreshExp = now + refreshTtl;
-
+      console.log(`Access ttl: ${accessTtl}, Refresh ttl: ${refreshTtl}`);
       const accessToken = jwt.sign({ sub: userId, app: appId, device: deviceId, type: "access" }, ACCESS_SECRET, { expiresIn: accessTtl });
       const refreshToken = jwt.sign({ sub: userId, app: appId, device: deviceId, type: "refresh" }, REFRESH_SECRET, { expiresIn: refreshTtl });
 

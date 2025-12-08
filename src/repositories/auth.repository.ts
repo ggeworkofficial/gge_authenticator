@@ -1,6 +1,7 @@
 import { UserRepository } from "./user.repository";
 import { User } from "../models/postgres/User";
 import { Transaction } from "sequelize";
+import { Token } from "../models/mongodb/TokenDocument";
 
 export class AuthRepository {
   private userRepo = new UserRepository();
@@ -20,5 +21,21 @@ export class AuthRepository {
     const user = await this.findUserById(userId, transaction);
     if (!user || !user.password_hash) return false;
     return user.password_hash === passwordHash;
+  }
+
+  // --- Session / token helpers (Mongo) ---
+  public async findSessionByRefreshToken(refreshToken: string) {
+    return Token.findOne({ refreshToken } as any) as any;
+  }
+
+  public async findSessionByUserDevice(userId: string, deviceId: string, appId: string) {
+    return Token.findOne({ userId, deviceId, appId } as any) as any;
+  }
+
+  public async updateAccessTokenForSession(userId: string, deviceId: string, appId: string, accessToken: string, accessExpiresAt: Date) {
+    const filter: any = { userId, deviceId, appId };
+    const update = { $set: { accessToken, accessTokenExpiresAt: accessExpiresAt } } as any;
+    const res = await Token.updateOne(filter, update as any);
+    return res;
   }
 }

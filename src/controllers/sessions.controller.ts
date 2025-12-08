@@ -2,7 +2,7 @@ import { Request, Response, NextFunction } from "express";
 import { SessionService } from "../services/session.service";
 
 export const createSessionController = async (req: Request, res: Response, next: NextFunction) => {
-  const { user_id, app_id, device_id, client_type, access_ttl, refresh_ttl } = req.body as any;
+  const { user_id, app_id, device_id, client_type, accessTokenTtl, refreshTokenttl } = req.body as any;
   try {
     const svc = new SessionService();
     const result = await svc.createSession({
@@ -10,8 +10,8 @@ export const createSessionController = async (req: Request, res: Response, next:
       appId: app_id,
       deviceId: device_id,
       clientType: client_type,
-      accessTtl: access_ttl ? Number(access_ttl) : undefined,
-      refreshTtl: refresh_ttl ? Number(refresh_ttl) : undefined,
+      accessTtl: accessTokenTtl ? Number(accessTokenTtl) : undefined,
+      refreshTtl: refreshTokenttl ? Number(refreshTokenttl) : undefined,
     });
 
     res.status(201).json({
