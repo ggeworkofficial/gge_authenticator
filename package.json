@@ -44,7 +44,8 @@
     "sequelize-cli": "^6.6.3",
     "sequelize-typescript": "^2.1.6",
     "uuid": "^13.0.0",
-    "winston": "^3.18.3"
+    "winston": "^3.18.3",
+    "winston-daily-rotate-file": "^5.0.0"
   },
   "devDependencies": {
     "@types/axios": "^0.9.36",
