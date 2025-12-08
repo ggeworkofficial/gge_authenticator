@@ -16,7 +16,6 @@ export const updateAppSchema = Joi.object({
   is_active: Joi.boolean(),
 }).min(1);
 
-// Query filter
 export const appsFilterQuerySchema = Joi.object({
   user_id: Joi.string().uuid(),
   device_id: Joi.string().uuid(),
@@ -28,7 +27,6 @@ export const createUserAppSchema = Joi.object({
   app_id: Joi.string().uuid().required(),
 });
 
-// App ID param
 export const appIdParam = Joi.object({
   id: Joi.string().uuid(),
   name: Joi.string().max(100),

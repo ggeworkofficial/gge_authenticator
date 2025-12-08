@@ -5,7 +5,6 @@ import { UserApp } from "../models/postgres/UserApp";
 
 export const appCreateController = async (req: Request, res: Response, next: NextFunction) => {
     const appData = req.body;
-
     try {
         const appService = new AppService();
         const newApp = await appService.createApp(appData);
