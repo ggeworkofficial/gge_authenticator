@@ -5,14 +5,32 @@ import {
   appsFilterQuerySchema,
   appIdParam
 } from "../validators/apps.validator";
-import { validateBody, validateQuery, validateParams } from "../middlewares/validator";
+import { createUserAppSchema } from "../validators/apps.validator";
+import { 
+  validateBody, 
+  validateQuery, 
+  validateParams 
+} from "../middlewares/validator";
+import { 
+  appCreateController, 
+  appListController, 
+  appGetController, 
+  appUpdateController, 
+  appDeleteController, 
+  appCreateUserController 
+} from "../controllers/app.controller";
 
 const router = Router();
 
-router.post("/", validateBody(createAppSchema));
-router.get("/", validateQuery(appsFilterQuerySchema));
-router.get("/:id", validateParams(appIdParam));
-router.put("/:id", validateParams(appIdParam), validateBody(updateAppSchema));
-router.delete("/:id", validateParams(appIdParam));
+router.post("/", validateBody(createAppSchema), appCreateController);
+router.post("/users", validateBody(createUserAppSchema), appCreateUserController);
+
+router.get("/", validateQuery(appsFilterQuerySchema), appListController);
+router.get("/:id", validateParams(appIdParam), appGetController);
+
+router.put("/:id", validateParams(appIdParam), validateBody(updateAppSchema), appUpdateController);
+
+router.delete("/:id", validateParams(appIdParam), appDeleteController);
+// router.delete('/' validateQuery(appsFilterQuerySearch), appDeleteallController);
 
 export default router;

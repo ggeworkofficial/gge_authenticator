@@ -29,7 +29,7 @@ module.exports = {
         defaultValue: 'browser' // default to browser, later desktop/mobile
       },
       device_id: {
-        type: Sequelize.STRING,
+        type: Sequelize.UUID,
         allowNull: false      // unique identifier for this device/session
       },
       last_active_at: {
@@ -37,6 +37,12 @@ module.exports = {
         defaultValue: Sequelize.literal('NOW()')
       },
       created_at: {
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('NOW()'),
+        allowNull: false
+      }
+      ,
+      updated_at: {
         type: Sequelize.DATE,
         defaultValue: Sequelize.literal('NOW()'),
         allowNull: false

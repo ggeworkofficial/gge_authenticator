@@ -33,6 +33,12 @@ module.exports = {
         defaultValue: Sequelize.literal('NOW()'),
         allowNull: false
       }
+      ,
+      updated_at: {
+        type: Sequelize.DATE,
+        defaultValue: Sequelize.literal('NOW()'),
+        allowNull: false
+      }
     });
 
     // Ensure a user can only have one entry per app

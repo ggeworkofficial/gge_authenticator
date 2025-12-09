@@ -2,6 +2,7 @@
 import winston from "winston";
 import path from "path";
 import fs from "fs";
+import DailyRotateFile from "winston-daily-rotate-file";
 
 export class Logger {
   private static instance: winston.Logger;
@@ -18,7 +19,8 @@ export class Logger {
     const logFormat = winston.format.combine(
       winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
       winston.format.printf(
-        ({ level, message, timestamp }) => `[${timestamp}] ${level.toUpperCase()}: ${message}`
+        ({ level, message, timestamp }) =>
+          `[${timestamp}] ${level.toUpperCase()}: ${message}`
       )
     );
 
@@ -26,17 +28,30 @@ export class Logger {
       level: "info",
       format: logFormat,
       transports: [
-        new winston.transports.File({
-          filename: path.join(logsDir, "error.log"),
+        // ----- ERROR LOGS -----
+        new DailyRotateFile({
+          dirname: logsDir,
+          filename: "error-%DATE%.log",
+          datePattern: "YYYY-MM-DD",
           level: "error",
+          maxSize: "10m",      // rotate if file exceeds 10 MB
+          maxFiles: "14d",     // keep logs for 14 days
+          zippedArchive: true, // compress old logs
         }),
-        new winston.transports.File({
-          filename: path.join(logsDir, "combined.log"),
+
+        // ----- COMBINED LOGS -----
+        new DailyRotateFile({
+          dirname: logsDir,
+          filename: "combined-%DATE%.log",
+          datePattern: "YYYY-MM-DD",
+          maxSize: "20m",      // rotate after 20 MB
+          maxFiles: "14d",     // keep for 14 days
+          zippedArchive: true,
         }),
       ],
     });
 
-    // Pretty console logging in development
+    // Pretty console logging in dev
     if (process.env.NODE_ENV !== "production") {
       this.instance.add(
         new winston.transports.Console({

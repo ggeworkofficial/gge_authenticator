@@ -1,15 +1,13 @@
 import Joi from "joi";
+import { tokenttl } from "./auth.validator";
 
 export const createSessionSchema = Joi.object({
     user_id: Joi.string().uuid().required(),
     device_id: Joi.string().uuid().required(),
     app_id: Joi.string().uuid().required(),
     client_type: Joi.string().valid("browser", "mobile", "desktop").required(),
-    access_token: Joi.string().required(),
-    refresh_token: Joi.string().required(),
-    accessTokenExpiresAt: Joi.date().iso().required(),
-    refreshTokenExpiresAt: Joi.date().iso().required(),
-});
+})
+.concat(tokenttl);
 
 export const updateSessionSchema = Joi.object({
     device_id: Joi.string().uuid(),
@@ -21,9 +19,8 @@ export const updateSessionSchema = Joi.object({
 }).min(1);
 
 export const sessionIdParam = Joi.object({
-    user_id: Joi.string().uuid(),
-    id: Joi.string().uuid(),
-}).xor("id", "user_id");
+    id: Joi.string().required(),
+});
 
 // Filter
 export const sessionFilterSchema = Joi.object({

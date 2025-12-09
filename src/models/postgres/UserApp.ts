@@ -8,6 +8,7 @@ import {
   Default,
   ForeignKey,
   CreatedAt,
+  UpdatedAt,
   BelongsTo,
   AllowNull,
   Unique,
@@ -37,12 +38,12 @@ export class UserApp extends Model<UserApp> {
   @ForeignKey(() => User)
   @AllowNull(false)
   @Column({ type: DataType.UUID })
-  userId!: string;
+  user_id!: string;
 
   @ForeignKey(() => App)
   @AllowNull(false)
   @Column({ type: DataType.UUID })
-  appId!: string;
+  app_id!: string;
 
   @BelongsTo(() => User)
   user!: User;
@@ -51,6 +52,10 @@ export class UserApp extends Model<UserApp> {
   app!: App;
 
   @CreatedAt
-  @Column({ field: "created_at" })
-  createdAt!: Date;
+  @Column({ type: DataType.DATE })
+  created_at!: Date;
+
+  @UpdatedAt
+  @Column({ type: DataType.DATE })
+  updated_at!: Date;
 }
