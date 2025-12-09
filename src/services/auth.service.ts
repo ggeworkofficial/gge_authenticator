@@ -13,6 +13,9 @@ import {
   RefreshTokenNotFoundError,
   AccessTokenError,
 } from "../errors/auth.error";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 type LoginPayload = {
   email: string;

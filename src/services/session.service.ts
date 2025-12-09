@@ -1,9 +1,12 @@
 import jwt from "jsonwebtoken";
 import { SessionRepository } from "../repositories/session.repository";
 import { SessionCreateError, SessionUpdateError, SessionListError, SessionNotFoundError, SessionValidationError, SessionDeleteError } from "../errors/session.error";
+import dotenv from "dotenv";
 
-const ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET || "access-secret";
-const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || "refresh-secret";
+dotenv.config();
+
+const ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
+const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
 
 export class SessionService {
   private repo = new SessionRepository();

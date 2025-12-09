@@ -3,8 +3,8 @@ import { commonCreateDeviceSchema } from "./device.validator";
 import { createUserSchema } from "./user.validator";
 
 export const tokenttl = Joi.object({
-    accessTokenTtl: Joi.number().integer().min(60).required(),
-    refreshTokenttl: Joi.number().integer().min(60).required(),
+    accessTokenTtl: Joi.number().integer().min(60).max(86400).required(),
+    refreshTokenttl: Joi.number().integer().min(60).max(7776000).required(),
 });
 
 export const registerSchema = Joi.object({
@@ -22,6 +22,7 @@ export const loginSchema = Joi.object({
 .concat(commonCreateDeviceSchema)
 .concat(tokenttl);
 
+//check for accessTokenTtl's time validity
 export const refreshSchema = Joi.object({
     refresh_token: Joi.string().required(),
     user_id: Joi.string().uuid().required(),
@@ -30,14 +31,11 @@ export const refreshSchema = Joi.object({
     accessTokenTtl: Joi.number().integer().min(60).optional(),
 });
 
+//check for accessTokenTtl's time validity
 export const authenticateSchema = Joi.object({
     access_token: Joi.string().required(),
-    refresh_token: Joi.string().required(),
-    user_id: Joi.string().uuid().required(),
-    device_id: Joi.string().uuid().required(),
-    app_id: Joi.string().uuid().required(),
-    accessTokenTtl: Joi.number().integer().min(60).optional(),
-});
+})
+.concat(refreshSchema);
 
 export const changePasswordSchema = Joi.object({
     user_id: Joi.string().uuid().required(),
