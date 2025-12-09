@@ -77,12 +77,3 @@ export const deleteSessionByIdController = async (req: Request, res: Response, n
     next(err);
   }
 };
-
-export default {
-  createSessionController,
-  listSessionsController,
-  getSessionController,
-  updateSessionController,
-  deleteSessionsController,
-  deleteSessionByIdController,
-};

@@ -2,7 +2,7 @@ import { MongoDB } from "../../connections/mongodb";
 
 const mongodb = MongoDB.getInstance();
 
-interface TokenDocument {
+export interface TokenDocument {
     _id?: string;                 // Mongo adds this automatically
     userId: string;
     appId: string;

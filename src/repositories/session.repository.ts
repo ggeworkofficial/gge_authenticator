@@ -1,24 +1,10 @@
-import { Token } from "../models/mongodb/TokenDocument";
+import { Token, TokenDocument } from "../models/mongodb/TokenDocument";
 import { SessionCreateError } from "../errors/session.error";
 import { ObjectId } from "mongodb";
 
-interface SessionDoc {
-  userId: string;
-  appId: string;
-  clientType: "browser" | "mobile" | "desktop";
-  deviceId: string;
-  accessToken: string;
-  refreshToken: string;
-  accessTokenExpiresAt: Date;
-  refreshTokenExpiresAt: Date;
-  createdAt: Date;
-  expiresAt: Date;
-}
-
 export class SessionRepository {
-  public async create(doc: SessionDoc) {
+  public async create(doc: TokenDocument) {
     try {
-      
       const now = new Date();
       const update = {
         $set: {
@@ -36,7 +22,7 @@ export class SessionRepository {
 
       const res = await Token.updateOne(filter, update, { upsert: true });
       if (!res.acknowledged) throw new SessionCreateError("Failed to insert session document", { res });
-      // return stored document - fetch it
+
       const stored = await Token.findOne(filter);
       return stored as any;
     } catch (err) {
@@ -66,7 +52,7 @@ export class SessionRepository {
     }
   }
 
-  public async updateById(id: string, data: Partial<SessionDoc>) {
+  public async updateById(id: string, data: Partial<TokenDocument>) {
     try {
       const update = { $set: data } as any;
       const res = await Token.updateOne({ _id: id } as any, update);

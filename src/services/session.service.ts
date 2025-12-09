@@ -8,10 +8,6 @@ const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET || "refresh-secret";
 export class SessionService {
   private repo = new SessionRepository();
 
-  /**
-   * Create session tokens and persist session document in MongoDB.
-   * @param params accessTtl/refreshTtl in seconds (number)
-   */
   public async createSession(params: {
     userId: string;
     appId: string;
@@ -30,7 +26,6 @@ export class SessionService {
       const now = Math.floor(Date.now() / 1000);
       const accessExp = now + accessTtl;
       const refreshExp = now + refreshTtl;
-      console.log(`Access ttl: ${accessTtl}, Refresh ttl: ${refreshTtl}`);
       const accessToken = jwt.sign({ sub: userId, app: appId, device: deviceId, type: "access" }, ACCESS_SECRET, { expiresIn: accessTtl });
       const refreshToken = jwt.sign({ sub: userId, app: appId, device: deviceId, type: "refresh" }, REFRESH_SECRET, { expiresIn: refreshTtl });
 
@@ -88,9 +83,8 @@ export class SessionService {
   public async updateSession(id: string, data: Partial<any>) {
     try {
       const res = await this.repo.updateById(id, data as any);
-      if (!res || (res.matchedCount !== undefined && res.matchedCount === 0)) {
-        throw new SessionNotFoundError("Session not found for update", { id });
-      }
+      if (!res || (res.matchedCount !== undefined && res.matchedCount === 0)) throw new SessionNotFoundError("Session not found for update", { id });
+      
       const updated = await this.repo.findById(id);
       return updated;
     } catch (err) {
