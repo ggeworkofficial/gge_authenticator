@@ -28,7 +28,7 @@ export const refreshSchema = Joi.object({
     user_id: Joi.string().uuid().required(),
     device_id: Joi.string().uuid().required(),
     app_id: Joi.string().uuid().required(),
-    accessTokenTtl: Joi.number().integer().min(60).optional(),
+    accessTokenTtl: Joi.number().integer().min(60).max(86400).optional(),
 });
 
 //check for accessTokenTtl's time validity
