@@ -8,6 +8,7 @@
     "db:migrate": "cd db_config && sequelize-cli db:migrate",
     "db:migrate:undo": "cd db_config && sequelize-cli db:migrate:undo",
     "db:migrate:undo:all": "cd db_config && sequelize-cli db:migrate:undo:all",
+    "db:start:rs": "node scripts/start_mongodb_rs.js",
     "dev": "nodemon src/index.ts",
     "build": "tsc",
     "start": "node dist/index.js",
