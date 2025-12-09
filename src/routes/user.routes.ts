@@ -5,10 +5,13 @@ import { userCreateController, userListController, userGetController, userUpdate
 
 const router = Router();
 
+router.post("/", validateBody(createUserSchema), userCreateController);
+
 router.get("/", userListController);
 router.get("/:id", validateParams(userIdParam), userGetController);
-router.post("/", validateBody(createUserSchema), userCreateController);
+
 router.put("/:id", validateParams(userIdParam), validateBody(updateUserSchema), userUpdateController);
+
 router.delete("/:id", validateParams(userIdParam), userDeleteController);
 
 export default router;

@@ -12,33 +12,34 @@ import { UserRepository } from "../repositories/user.repository";
 
 export class UserService {
   private repo = new UserRepository();
+  private db = Postgres.getInstance();
 
   async createUser(userData: Partial<User>): Promise<User> {
-    const db = Postgres.getInstance();
-    const transaction = await db.getTransaction();
+    const transaction = await this.db.getTransaction();
     try {
       const existing = await this.repo.findByEmail(userData.email as string, transaction);
       if (existing) throw new UserCreateError("User already exists", { email: userData.email });
       
       const hashedPassword = await bcrypt.hash(userData.password_hash!, 10);
       userData.password_hash = hashedPassword;
+      
       const user = await this.repo.create(userData, transaction);
       await transaction.commit();
       return user;
     } catch (error) {
       await transaction.rollback();
-      throw error;
+      if (error instanceof UserCreateError) throw error;
+      throw new UserCreateError("Failed to create user", { userData, cause: error });
     }
   }
 
-  async getUserById(id: string): Promise<User> {
-    const db = Postgres.getInstance();
-    const transaction = await db.getTransaction();
+  async getUserById(id: string): Promise<User> {;
+    const transaction = await this.db.getTransaction();
     try {
       const user = await this.repo.findById(id, transaction);
       if (!user) throw new UserFindError("User not found", { id });
+      
       await transaction.commit();
-
       return user;
     } catch (error) {
       await transaction.rollback();
@@ -48,8 +49,7 @@ export class UserService {
   }
 
   async getUsers(filter?: Partial<User>): Promise<User[]> {
-    const db = Postgres.getInstance();
-    const transaction = await db.getTransaction();
+    const transaction = await this.db.getTransaction();
     try {
       const users = await this.repo.findAll(filter, transaction);
       await transaction.commit();
@@ -61,11 +61,11 @@ export class UserService {
   }
 
   async updateUser(id: string, data: Partial<User>): Promise<User> {
-    const db = Postgres.getInstance();
-    const transaction = await db.getTransaction();
+    const transaction = await this.db.getTransaction();
     try {
       const updated = await this.repo.update(id, data, transaction);
       if (!updated) throw new UserUpdateError("User not found", { id });
+      
       await transaction.commit();
       return updated;
     } catch (error) {
@@ -76,11 +76,11 @@ export class UserService {
   }
 
   async deleteUser(id: string): Promise<boolean> {
-    const db = Postgres.getInstance();
-    const transaction = await db.getTransaction();
+    const transaction = await this.db.getTransaction();
     try {
       const deleted = await this.repo.delete(id, transaction);
       if (!deleted) throw new UserDeleteError("User not found", { id });
+      
       await transaction.commit();
       return deleted;
     } catch (error) {
