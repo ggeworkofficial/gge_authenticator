@@ -22,6 +22,11 @@ module.exports = {
       description: {
         type: Sequelize.TEXT
       },
+
+      hashed_secret: {
+        type: Sequelize.STRING,
+        allowNull: false
+      },
       icon_url: {
         type: Sequelize.TEXT
       },
