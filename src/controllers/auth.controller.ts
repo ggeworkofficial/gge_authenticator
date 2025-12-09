@@ -9,133 +9,130 @@ const logger = Logger.getLogger();
 
 const getBaseUrl = () => process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 
-export const loginController = async (req: Request, res: Response, next: NextFunction) => {
-  const payload = req.body as any;
+const handleDeviceApi = async (
+  base: string,
+  user_id: string,
+  payload: any
+) => {
+  const devicePayload = {
+    user_id,
+    device_id: payload.device_id,
+    device_name: payload.device_name,
+    device_type: payload.device_type,
+  };
+
   try {
-    const service = new AuthService();
-    const user = await service.login({ email: payload.email, password_hash: payload.password_hash });
+    const resp = await axios.post(`${base}/devices`, devicePayload);
+    if (!resp.data || !(resp.data as any).device) throw new MainError("Device creation failed", 500, { payload: devicePayload });
+    
+    return (resp.data as any).device;
+  } catch (err: any) {
+    const { response } = err;
 
-    // Build device payload (exclude app_id)
-    const devicePayload: any = {
-      user_id: user.id,
-      device_id: payload.device_id,
-      device_name: payload.device_name,
-      device_type: payload.device_type,
-    };
-
-    const base = getBaseUrl();
-
-    // Call devices POST endpoint via HTTP so that route handles creation
-    let deviceResp;
-    try {
-      deviceResp = await axios.post(`${base}/devices`, devicePayload);
-      
-    } catch (err: any) {
-        if (err.response) {
-            const { status, data } = err.response;
-
-            if (data?.errorType === "DeviceCreateError" && data?.message === "Device already exists") {
-                logger.info("Device already exists, continuing login...");
-                const existingResp = await axios.get(
-                    `${base}/devices`,
-                    { params: { user_id: user.id, device_id: payload.device_id } }
-                );
-
-                const existingDevice = (existingResp.data as any).devices?.[0];
-                if (!existingDevice) {
-                    return next(new MainError("Existing device record not found", 500));
-                }
-
-                deviceResp = { data: { device: existingDevice } };
-            } else {
-                return next(err);
-            }
-        } else {
-            return next(err);
-        }
-    }
-
-    if (!deviceResp) throw new MainError("Device response missing", 500, { payload: devicePayload });
-    const device = (deviceResp.data as any).device;
-    if (!device) return next(new MainError("Device creation failed", 500, {payload: devicePayload}));
-
-    // Call apps GET to verify app exists
-    let appResp;
-    try {
-      const appId = payload.app_id;
-      appResp = await axios.get(`${base}/apps/${appId}`);
-    } catch (err: any) {
-        const apiError = err?.response?.data;
-
-        if (apiError?.errorType) {
-            // Re-create your real server-side error object
-            const mappedError = new MainError(
-            apiError.message,
-            400,
-            apiError.details
-            );
-            mappedError.name = apiError.errorType;
-            return next(mappedError);
-        } 
-        if (err.response?.data) {
-            console.error("Device creation error:", err.response.data);
-            return next(err.response.data); // <-- forward the real backend error
-        }
-      return next(err);
-    }
-
-    const app = (appResp.data as any).app;
-    if (!app) return next(new MainError("App not found", 404, { app_id: payload.app_id }));
-
-    // Create session via internal API POST /sessions
-    try {
-      const sessionPayload: any = {
-        user_id: user.id,
-        app_id: app.id,
-        device_id: device.device_id || device.id,
-        client_type: payload.device_type || "browser",
-      };
-
-      if (payload.accessTokenTtl) sessionPayload.accessTokenTtl = payload.accessTokenTtl;
-      if (payload.refreshTokenttl) sessionPayload.refreshTokenttl = payload.refreshTokenttl;
-      let sessionResp;
-      try {
-        sessionResp = await axios.post(`${base}/sessions`, sessionPayload);
-      } catch (err: any) {
-        const apiError = err?.response?.data;
-
-        if (apiError?.errorType) {
-          const mappedError = new MainError(apiError.message, err.response?.status || 400, apiError.details);
-          mappedError.name = apiError.errorType;
-          return next(mappedError);
-        }
-
-        if (err.response?.data) {
-          return next(err.response.data);
-        }
-
-        return next(err);
-      }
-
-      if (!sessionResp || !sessionResp.data) return next(new MainError("Session creation failed", 500));
-
-      const sess = sessionResp.data as any;
-
-      res.status(200).json({
-        user_id: user.id,
-        device_pm_id: device.id,
-        device_id: device.device_id,
-        app_id: app.id,
-        // include the entire sessions response payload
-        ...sess,
+    if (response?.data?.errorType === "DeviceCreateError" &&
+        response.data.message === "Device already exists") 
+    {
+      logger.warn(`Device already exists for user_id=${user_id}, device_id=${payload.device_id}. Fetching existing device.`);
+      const existingResp = await axios.get(`${base}/devices`, {
+        params: { user_id, device_id: payload.device_id },
       });
-    } catch (err) {
-      return next(err);
+      
+      const existingDevice = (existingResp.data as any).devices?.[0];
+      if (!existingDevice) throw new MainError("Existing device not found", 500);
+
+      return existingDevice;
     }
-  } catch (error) {
-    next(error);
+
+    throw err;
   }
 };
+
+
+const handleAppApi = async (base: string, app_id: string) => {
+  try {
+    const resp = await axios.get(`${base}/apps/${app_id}`);
+    if (!(resp.data as any)?.app) {
+      throw new MainError("App not found", 404, { app_id });
+    }
+    return (resp.data as any).app;
+  } catch (err: any) {
+    const apiError = err?.response?.data;
+
+    if (apiError?.errorType) {
+      const mapped = new MainError(apiError.message, 400, apiError.details);
+      mapped.name = apiError.errorType;
+      throw mapped;
+    }
+
+    throw err;
+  }
+};
+
+
+const handleSessionApi = async (
+  base: string,
+  sessionPayload: any
+) => {
+  try {
+    const resp = await axios.post(`${base}/sessions`, sessionPayload);
+    return resp.data;
+  } catch (err: any) {
+    const apiError = err?.response?.data;
+
+    if (apiError?.errorType) {
+      const mapped = new MainError(apiError.message, 400, apiError.details);
+      mapped.name = apiError.errorType;
+      throw mapped;
+    }
+
+    throw err;
+  }
+};
+
+
+export const loginController = async (req: Request, res: Response, next: NextFunction) => {
+  const payload = req.body;
+  const base = getBaseUrl();
+
+  try {
+    // 1. LOGIN USER
+    const service = new AuthService();
+    const user = await service.login({
+      email: payload.email,
+      password_hash: payload.password_hash,
+    });
+
+    // 2. DEVICE
+    const device = await handleDeviceApi(base, user.id, payload);
+
+    // 3. APP
+    const app = await handleAppApi(base, payload.app_id);
+
+    // 4. SESSION
+    const sessionPayload = {
+      user_id: user.id,
+      app_id: app.id,
+      device_id: device.device_id || device.id,
+      client_type: payload.device_type || "browser",
+      accessTokenTtl: payload.accessTokenTtl,
+      refreshTokenttl: payload.refreshTokenttl,
+    };
+
+    const session: any = await handleSessionApi(base, sessionPayload);
+
+    // 5. RESPONSE
+    res.status(200).json({
+      user_id: user.id,
+      device_pm_id: device.id,
+      device_id: device.device_id,
+      app_id: app.id,
+      ...session,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 
 export const registerController = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body as any;
@@ -286,7 +283,7 @@ export const refreshController = async (req: Request, res: Response, next: NextF
   const payload = req.body as any;
   try {
     const service = new AuthService();
-    const result = await service.refresh({
+    const result = await service.refreshAccessToken({
       refresh_token: payload.refresh_token,
       user_id: payload.user_id,
       device_id: payload.device_id,

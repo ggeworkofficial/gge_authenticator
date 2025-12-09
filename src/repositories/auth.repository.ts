@@ -23,7 +23,6 @@ export class AuthRepository {
     return user.password_hash === passwordHash;
   }
 
-  // --- Session / token helpers (Mongo) ---
   public async findSessionByRefreshToken(refreshToken: string) {
     return Token.findOne({ refreshToken } as any) as any;
   }
