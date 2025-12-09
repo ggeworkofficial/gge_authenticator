@@ -20,7 +20,6 @@ export const deviceIdParam = Joi.object({
   id: Joi.string().uuid().required(),
 });
 
-// Filter
 export const deviceFilterSchema = Joi.object({
   device_id: Joi.string().uuid(),
   user_id: Joi.string().uuid(),

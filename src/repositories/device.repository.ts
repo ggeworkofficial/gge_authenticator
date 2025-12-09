@@ -27,7 +27,6 @@ export class DeviceRepository {
 
   public async findAll(filter?: DeviceFilter, transaction?: Transaction): Promise<UserDevice[]> {
     const where = this.mapFilter(filter);
-    console.log("Finding devices with filter:", where);
     return UserDevice.findAll({ where, transaction });
   }
 

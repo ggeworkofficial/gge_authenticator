@@ -17,9 +17,12 @@ import {
 const router = Router();
 
 router.post("/", validateBody(createDeviceSchema), deviceCreateController);
+
 router.get("/", validateQuery(deviceFilterSchema), deviceListController);
 router.get("/:id", validateParams(deviceIdParam), deviceGetController);
+
 router.put("/:id", validateParams(deviceIdParam), validateBody(updateDeviceSchema), deviceUpdateController);
+
 router.delete("/", validateQuery(deviceFilterSchema), deviceDeleteController);
 
 export default router;
