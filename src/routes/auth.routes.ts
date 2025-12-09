@@ -15,8 +15,10 @@ const router = Router();
 
 router.post("/login", validateBody(loginSchema), loginController);
 router.post("/register", validateBody(registerSchema), registerController);
-router.post("/change-password", validateBody(changePasswordSchema), changePasswordController);
+
 router.post("/authenticate", validateBody(authenticateSchema), authenticateController);
 router.post("/refresh", validateBody(refreshSchema), refreshController);
+
+router.patch("/change-password", validateBody(changePasswordSchema), changePasswordController);
 //router.post("/verify-email", validateBody(verifiyEmailSchema), verifiyEmailController);
 export default router;
