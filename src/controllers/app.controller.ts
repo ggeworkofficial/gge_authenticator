@@ -69,3 +69,15 @@ export const appCreateUserController = async (req: Request, res: Response, next:
         next(error);
     }
 };
+
+export const changeAppSecretController = async (req: Request, res: Response, next: NextFunction) => {
+    const payload = req.body;
+    try {
+        const appService = new AppService();
+        const apps = await appService.changeAppSecret(payload);
+        res.status(200).json(apps);
+    }
+    catch (error) {
+        next(error);
+    }
+};

@@ -5,6 +5,7 @@ import {
   AppListError,
   AppUpdateError,
   AppDeleteError,
+  IncorrectAppSecretError,
 } from "../errors/app.error";
 import { AppUserCreateError, AppUserExistsError } from "../errors/app.error";
 import { App } from "../models/postgres/App";
@@ -109,6 +110,28 @@ export class AppService {
             await transaction.rollback();
             if (error instanceof AppDeleteError) throw error;
             throw new AppDeleteError("Failed to delete app", { id, cause: error });
+        }
+    }
+
+    async changeAppSecret(params: {id: string, old_hashed_secret: string, new_hashed_secret: string}): Promise<App> {
+        const transaction = await this.db.getTransaction();
+        try {
+            const app = await this.appRepo.findById(params.id, transaction);
+            if (!app) throw new AppFindError("App not found", { id: params.id });
+
+            const isMatch = await bcrypt.compare(params.old_hashed_secret, app.hashed_secret!);
+            if (!isMatch) throw new IncorrectAppSecretError("Secret is incorrect", { id: params.id });
+            
+            app.hashed_secret = await bcrypt.hash(params.new_hashed_secret, 10);
+            const updated = await this.appRepo.update(params.id, { hashed_secret: app.hashed_secret }, transaction);
+            
+            await transaction.commit();
+            return updated!;
+        } catch (error) {
+            await transaction.rollback();
+            if (error instanceof AppFindError) throw error;
+            if (error instanceof IncorrectAppSecretError) throw error;
+            throw new AppUpdateError("Failed to change app secret", { id: params.id, cause: error });
         }
     }
 }

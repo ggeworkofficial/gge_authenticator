@@ -41,3 +41,9 @@ export class AppUserExistsError extends MainError {
         super(message, 409, details);
     }
 }
+
+export class IncorrectAppSecretError extends MainError {
+    constructor(message: string, details?: any) {
+        super(message, 401, details);
+    }
+}

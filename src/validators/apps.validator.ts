@@ -32,3 +32,9 @@ export const appIdParam = Joi.object({
   id: Joi.string().uuid(),
   name: Joi.string().max(100),
 }).xor("id", "name");
+
+export const changeAppsSecretSchema = Joi.object({
+  id: Joi.string().uuid().required(),
+  old_hashed_secret: Joi.string().min(8).required(),
+  new_hashed_secret: Joi.string().min(8).required(),
+});
