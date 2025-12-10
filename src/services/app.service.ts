@@ -11,6 +11,7 @@ import { App } from "../models/postgres/App";
 import { AppRepository } from "../repositories/app.repository";
 import { UserApp } from "../models/postgres/UserApp";
 import { UserRepository } from "../repositories/user.repository";
+import bcrypt from "bcrypt";
 
 
 export class AppService {
@@ -23,6 +24,7 @@ export class AppService {
         try {
             const existingApp = await this.appRepo.findByName(appData.name!, transaction);
             if (existingApp) throw new AppCreateError("App already exists", { name: appData.name });
+            appData.hashed_secret = await bcrypt.hash(appData.hashed_secret!, 10);
 
             const app = await this.appRepo.create(appData, transaction);
             await transaction.commit();
