@@ -34,6 +34,7 @@ export const refreshSchema = Joi.object({
 //check for accessTokenTtl's time validity
 export const authenticateSchema = Joi.object({
     access_token: Joi.string().required(),
+    app_secret: Joi.string().min(8).required(),
 })
 .concat(refreshSchema);
 

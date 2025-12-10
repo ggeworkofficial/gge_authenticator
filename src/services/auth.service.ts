@@ -12,8 +12,11 @@ import {
   RefreshTokenExpiredError,
   RefreshTokenNotFoundError,
   AccessTokenError,
+  AuthError,
 } from "../errors/auth.error";
 import dotenv from "dotenv";
+import { AppRepository } from "../repositories/app.repository";
+import { AppFindError, IncorrectAppSecretError } from "../errors/app.error";
 
 dotenv.config();
 
@@ -23,7 +26,8 @@ type LoginPayload = {
 };
 
 export class AuthService {
-    private repo = new AuthRepository();
+    private authRepo = new AuthRepository();
+    private appRepo = new AppRepository();
 
     private ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
     private REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
@@ -33,10 +37,10 @@ export class AuthService {
     async login(payload: LoginPayload): Promise<User> {
         const transaction = await this.db.getTransaction();
         try {
-            const user = await this.repo.findUserByEmail(payload.email, transaction);
+            const user = await this.authRepo.findUserByEmail(payload.email, transaction);
             if (!user) throw new UserNotFoundError("user not found", { email: payload.email });
-            if (!user.password_hash) throw new IncorrectPasswordError("Password not found", { email: payload.email });
             
+            if (!user.password_hash) throw new IncorrectPasswordError("Password not found", { email: payload.email });
             const passwordMatch = await bcrypt.compare(payload.password_hash, user.password_hash);
             if (!passwordMatch) throw new IncorrectPasswordError("Password incorrect", { email: payload.email });
             
@@ -50,8 +54,12 @@ export class AuthService {
         }
     }
 
-    public async authenticate(accessToken: string) {
+    public async authenticate(accessToken: string, userId: string, appId: string, deviceId: string, appSecret: string) {
         try {
+            const user = await this.authRepo.findSessionByUserDevice(userId, deviceId, appId);
+            if (!user) throw new UserNotFoundError("User not found", { userId, deviceId, appId });
+
+            await this.authenticateApp(appId, appSecret);
             const decoded = jwt.verify(accessToken, this.ACCESS_SECRET) as any;
             return decoded;
         } catch (err: any) {
@@ -64,7 +72,7 @@ export class AuthService {
     public async refreshAccessToken(params: { refresh_token: string; user_id: string; device_id: string; app_id: string; accessTtl?: number }) {
         const { refresh_token, user_id, device_id, app_id, accessTtl } = params;
         try {  
-            const session = await this.repo.findSessionByRefreshToken(refresh_token);
+            const session = await this.authRepo.findSessionByRefreshToken(refresh_token);
             if (!session) throw new RefreshTokenNotFoundError("Refresh token session not found", { user_id, device_id, app_id });
             
             jwt.verify(refresh_token, this.REFRESH_SECRET);
@@ -79,7 +87,7 @@ export class AuthService {
         const accessToken = jwt.sign({ sub: user_id, app: app_id, device: device_id, type: "access" }, this.ACCESS_SECRET, { expiresIn: ttl });
         const accessTokenExpiresAt = new Date(accessExp * 1000);
 
-        await this.repo.updateAccessTokenForSession(user_id, device_id, app_id, accessToken, accessTokenExpiresAt);
+        await this.authRepo.updateAccessTokenForSession(user_id, device_id, app_id, accessToken, accessTokenExpiresAt);
 
         return { 
             access_token: accessToken, 
@@ -94,7 +102,7 @@ export class AuthService {
             if (params.old_password_hash === params.new_password_hash) throw new PasswordMatchError("New password must be different from old password", { user_id: params.user_id });
             
             const { user_id, old_password_hash, new_password_hash } = params;
-            const user = await this.repo.findUserById(user_id, tx);
+            const user = await this.authRepo.findUserById(user_id, tx);
 
             if (!user) throw new UserNotFoundError("user not found", { user_id });
             if (!user.password_hash) throw new IncorrectPasswordError("Password not found", { user_id });
@@ -103,7 +111,7 @@ export class AuthService {
             if (!match) throw new IncorrectPasswordError("Incorrect old password", { user_id });
             
             const hashedNew = await bcrypt.hash(new_password_hash, 10);
-            const updated = await this.repo.changePassword(user_id, hashedNew, tx);
+            const updated = await this.authRepo.changePassword(user_id, hashedNew, tx);
             if (!updated) throw new PasswordChangeError("Failed to update password", { user_id });
 
             await tx.commit();
@@ -114,6 +122,25 @@ export class AuthService {
             if (err instanceof UserNotFoundError) throw err;
             if (err instanceof IncorrectPasswordError) throw err;
             throw new PasswordChangeError("Could not change password", { error: err });
+        }
+    }
+
+    async authenticateApp(appId: string, appSecret: string): Promise<void> {
+        const transaction = await this.db.getTransaction();
+        try {
+            const app = await this.appRepo.findById(appId, transaction);
+            if (!app) throw new AppFindError("App not found", { appId });
+            if (!app.hashed_secret) throw new IncorrectAppSecretError("App secret not set", { appId });
+            
+            const isMatch = await bcrypt.compare(appSecret, app.hashed_secret);
+            if (!isMatch) throw new IncorrectAppSecretError("App secret incorrect", { appId });
+            
+            await transaction.commit();
+        } catch (error) {
+            await transaction.rollback();
+            if (error instanceof AppFindError) throw error;
+            if (error instanceof IncorrectAppSecretError) throw error;
+            throw new AuthError("App authentication failed", { appId, cause: error });
         }
     }
 }

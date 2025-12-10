@@ -201,7 +201,6 @@ export const registerController = async (req: Request, res: Response, next: Next
 
 export const changePasswordController = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body as any;
-  console.log("changePasswordController payload:", req.body);
   try {
     const service = new AuthService();
     const updated = await service.changePassword({
@@ -215,14 +214,73 @@ export const changePasswordController = async (req: Request, res: Response, next
   }
 };
 
+interface AuthPayload {
+  user_id?: string;
+  device_id?: string;
+  app_id?: string;
+  app_secret?: string;
+  access_token?: string;
+  refresh_token?: string;
+  accessTokenTtl?: number;
+}
+
+interface AuthAppPayload {
+  app_id?: string;
+  app_secret?: string;
+}
+
+const getAuthPayload = (req: Request): AuthPayload => {
+  const body = (req.body && Object.keys(req.body).length > 0) 
+              ? req.body as AuthPayload 
+              : {} as AuthPayload;
+  const headers = req.headers;
+
+  return {
+    user_id: body.user_id || headers['x-user-id'] as string,
+    device_id: body.device_id || headers['x-device-id'] as string,
+    app_id: body.app_id || headers['x-app-id'] as string,
+    app_secret: body.app_secret || headers['x-app-secret'] as string,
+    access_token: body.access_token || headers['x-access-token'] as string,
+    refresh_token: body.refresh_token || headers['x-refresh-token'] as string,
+    accessTokenTtl: body.accessTokenTtl || Number(headers['x-access-token-ttl']),
+  };
+};
+
+const getAuthAppPayload = (req: Request): AuthAppPayload => {
+  const body = (req.body && Object.keys(req.body).length > 0) 
+              ? req.body as AuthAppPayload 
+              : {} as AuthAppPayload;
+  const headers = req.headers;
+  return {
+    app_id: body.app_id || headers['x-app-id'] as string,
+    app_secret: body.app_secret || headers['x-app-secret'] as string,
+  };
+}
+
+export const authenticateAppController = async (req: Request, res: Response, next: NextFunction) => {
+  const payload = getAuthAppPayload(req);
+  try {
+    const service = new AuthService();
+    await service.authenticateApp(payload.app_id!, payload.app_secret!);
+    res.status(200).json({ message: "App authenticated successfully" });
+  } catch (err) {
+    next(err);
+  }
+};
+
 export const authenticateController = async (req: Request, res: Response, next: NextFunction) => {
-  const payload = req.body as any;
+  const payload = getAuthPayload(req);
   const base = getBaseUrl();
+
+  if (!payload.user_id || !payload.device_id || !payload.app_id || !payload.access_token) {
+    return next(new MainError("Missing required authentication parameters", 400));
+  }
   try {
     const service = new AuthService();
     // Try to validate access token
     try {
-      const decoded = await service.authenticate(payload.access_token);
+
+      const decoded = await service.authenticate(payload.access_token, payload.user_id, payload.app_id!, payload.device_id, payload.app_secret!);
       // If valid, respond with authenticate schema
       // decode exp to date if available
       const exp = (decoded && (decoded as any).exp) ? new Date((decoded as any).exp * 1000) : undefined;
