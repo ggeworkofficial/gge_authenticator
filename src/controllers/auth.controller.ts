@@ -1,13 +1,20 @@
 import { Request, Response, NextFunction } from "express";
-import axios from "axios";
+import axios, { head } from "axios";
 import { AuthService } from "../services/auth.service";
 import { MainError } from "../errors/main.error";
 import { Logger } from "../utils/logger";
-import { AccessTokenExpiredError } from "../errors/auth.error";
+import { AccessTokenExpiredError, AuthError } from "../errors/auth.error";
+import { error } from "console";
 
 const logger = Logger.getLogger();
 
 const getBaseUrl = () => process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+
+declare module "express-serve-static-core" {
+  interface Request {
+    auth?: AuthPayload
+  }
+}
 
 const handleDeviceApi = async (
   base: string,
@@ -90,25 +97,36 @@ const handleSessionApi = async (
 };
 
 
+export const returnCodeChallange = async (service: any, response: any, code_challange?: string, ) => {
+  if (!service || !(service instanceof AuthService)) {
+    service = new AuthService()
+  }
+  if (code_challange) {
+      const secret_key = await service.saveCodeChalleng(code_challange, response);
+      return {
+        secret_key,
+        message: "Waiting for verification"
+      };
+  }
+}
+
 export const loginController = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body;
   const base = getBaseUrl();
+  const code_challange = req.auth?.code_challenger;
+  let response;
+    
 
   try {
-    // 1. LOGIN USER
     const service = new AuthService();
     const user = await service.login({
       email: payload.email,
       password_hash: payload.password_hash,
     });
 
-    // 2. DEVICE
     const device = await handleDeviceApi(base, user.id, payload);
-
-    // 3. APP
     const app = await handleAppApi(base, payload.app_id);
 
-    // 4. SESSION
     const sessionPayload = {
       user_id: user.id,
       app_id: app.id,
@@ -119,15 +137,16 @@ export const loginController = async (req: Request, res: Response, next: NextFun
     };
 
     const session: any = await handleSessionApi(base, sessionPayload);
-
-    // 5. RESPONSE
-    res.status(200).json({
+    response = {
       user_id: user.id,
       device_pm_id: device.id,
       device_id: device.device_id,
       app_id: app.id,
       ...session,
-    });
+    }
+
+    const codeChallange = await returnCodeChallange(service, response, code_challange);
+    res.status(200).json(codeChallange ?? response);
   } catch (err) {
     next(err);
   }
@@ -137,6 +156,10 @@ export const loginController = async (req: Request, res: Response, next: NextFun
 export const registerController = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body as any;
   const base = getBaseUrl();
+  const code_challange = req.auth?.code_challenger;
+  const headers = {
+    "x-code-challenger": code_challange,
+  };
   try {
     // 1) create user via internal users API
     let createResp;
@@ -152,7 +175,7 @@ export const registerController = async (req: Request, res: Response, next: Next
         is_admin: payload.is_admin,
         is_verified: payload.is_verified,
       };
-      createResp = await axios.post(`${base}/users`, userPayload);
+      createResp = await axios.post(`${base}/users`, userPayload, {headers});
     } catch (err: any) {
       const apiError = err?.response?.data;
       if (apiError?.errorType) {
@@ -181,8 +204,8 @@ export const registerController = async (req: Request, res: Response, next: Next
       if (payload.accessTokenTtl) loginPayload.accessTokenTtl = payload.accessTokenTtl;
       if (payload.refreshTokenttl) loginPayload.refreshTokenttl = payload.refreshTokenttl;
 
-      const loginResp = await axios.post(`${base}/auth/login`, loginPayload);
-      // forward the login response as-is
+      const loginResp = await axios.post(`${base}/auth/login`, loginPayload, {headers});
+
       return res.status(loginResp.status || 200).json(loginResp.data);
     } catch (err: any) {
       const apiError = err?.response?.data;
@@ -214,7 +237,7 @@ export const changePasswordController = async (req: Request, res: Response, next
   }
 };
 
-interface AuthPayload {
+export interface AuthPayload {
   user_id?: string;
   device_id?: string;
   app_id?: string;
@@ -222,11 +245,15 @@ interface AuthPayload {
   access_token?: string;
   refresh_token?: string;
   accessTokenTtl?: number;
+  access_token_expires_at?: Date | undefined;
+  code_challenger?: string;
+  error?: boolean
 }
 
 interface AuthAppPayload {
   app_id?: string;
   app_secret?: string;
+  code_challenger?: string;
 }
 
 const getAuthPayload = (req: Request): AuthPayload => {
@@ -247,22 +274,38 @@ const getAuthPayload = (req: Request): AuthPayload => {
 };
 
 const getAuthAppPayload = (req: Request): AuthAppPayload => {
-  const body = (req.body && Object.keys(req.body).length > 0) 
-              ? req.body as AuthAppPayload 
-              : {} as AuthAppPayload;
   const headers = req.headers;
+  console.log(headers);
+  if (headers['x-code-challenger']) return { code_challenger: headers['x-code-challenger'] as string };
+  if (!headers['x-code-challenger'] || !headers['x-app-secret']) {
+    req.auth = {
+      error: true
+    }
+    throw new AuthError("Invalid input.\n Some attributes are missing", 400)
+  } 
+  if ((headers['x-code-challenger']) && (headers['x-app-secret'])) throw new AuthError("Invalid input :)", 400);
+
   return {
-    app_id: body.app_id || headers['x-app-id'] as string,
-    app_secret: body.app_secret || headers['x-app-secret'] as string,
+    app_id: headers['x-app-id'] as string,
+    app_secret: headers['x-app-secret'] as string,
   };
 }
 
 export const authenticateAppController = async (req: Request, res: Response, next: NextFunction) => {
-  const payload = getAuthAppPayload(req);
+
+
   try {
+      const payload = getAuthAppPayload(req);
+
+      if ((!payload?.app_id || !payload?.app_secret) && payload.code_challenger) {
+        req.auth = {
+          code_challenger: payload.code_challenger,
+        };
+        return next();
+      }
     const service = new AuthService();
     await service.authenticateApp(payload.app_id!, payload.app_secret!);
-    res.status(200).json({ message: "App authenticated successfully" });
+    return next();
   } catch (err) {
     next(err);
   }
@@ -284,14 +327,16 @@ export const authenticateController = async (req: Request, res: Response, next: 
       // If valid, respond with authenticate schema
       // decode exp to date if available
       const exp = (decoded && (decoded as any).exp) ? new Date((decoded as any).exp * 1000) : undefined;
-      return res.status(200).json({
+      req.auth = {
         access_token: payload.access_token,
         refresh_token: payload.refresh_token,
         user_id: payload.user_id,
         device_id: payload.device_id,
         app_id: payload.app_id,
         access_token_expires_at: exp,
-      });
+      };
+      return next();
+
     } catch (err: any) {
       // If access token expired, forward to /auth/refresh
       if (err instanceof AccessTokenExpiredError) {
@@ -351,6 +396,19 @@ export const refreshController = async (req: Request, res: Response, next: NextF
 
     res.status(200).json(result);
   } catch (err) {
+    next(err);
+  }
+};
+
+export const verifiyController = async (req: Request, res: Response, next: NextFunction) => {
+  const payload = req.body as any;
+  console.log(`payload ${payload}`)
+  try {
+    const service = new AuthService();
+    const result = await service.verifyCodeChallenge(payload.secret_key, payload.code_verifier);
+    return res.status(200).json(result);
+  } catch (err) {
+    console.log(err);
     next(err);
   }
 };

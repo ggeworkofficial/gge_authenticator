@@ -9,6 +9,7 @@ export const tokenttl = Joi.object({
 
 export const registerSchema = Joi.object({
     app_id: Joi.string().uuid().required(),
+    app_secret: Joi.string().optional()
 })
 .concat(createUserSchema)
 .concat(commonCreateDeviceSchema)
@@ -18,6 +19,7 @@ export const loginSchema = Joi.object({
     email: Joi.string().email().required(),
     password_hash: Joi.string().min(8).required(),
     app_id: Joi.string().uuid().required(),
+    app_secret: Joi.string().optional()
 })
 .concat(commonCreateDeviceSchema)
 .concat(tokenttl);
@@ -35,6 +37,7 @@ export const refreshSchema = Joi.object({
 export const authenticateSchema = Joi.object({
     access_token: Joi.string().required(),
     app_secret: Joi.string().min(8).required(),
+    code_challanger: Joi.string().optional()
 })
 .concat(refreshSchema);
 
@@ -47,4 +50,9 @@ export const changePasswordSchema = Joi.object({
 export const verifiyEmailSchema = Joi.object({
     user_id: Joi.string().uuid().required(),
     otp: Joi.string().length(6).required(),
+});
+
+export const verifyCodeSchema = Joi.object({
+    secret_key: Joi.string().required(),
+    code_verifier: Joi.string().required(),
 });

@@ -2,6 +2,17 @@ import { Request, Response, NextFunction } from "express";
 import { MainError } from "../errors/main.error"; 
 import { Logger } from "../utils/logger";
 
+// 404 handler
+export const notFound = (req: Request, res: Response, next: NextFunction) => {
+  const error = new MainError(
+    `Cannot ${req.method} ${req.originalUrl}`, // message
+    404,                                      // statusCode
+    { method: req.method, url: req.originalUrl } // details
+  );
+  next(error);
+};
+
+
 export const errorHandler = (
   err: any,
   req: Request,
@@ -10,7 +21,7 @@ export const errorHandler = (
 ) => {
 
   const isMainError = err instanceof MainError;
-
+  console.log(err);
   const statusCode = isMainError ? err.statusCode : 500;
   const errorType = isMainError ? err.name : "InternalServerError";
   const message = isMainError ? err.message : "Something went wrong";
