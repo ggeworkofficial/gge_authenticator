@@ -12,7 +12,6 @@ import { App } from "../models/postgres/App";
 import { AppRepository } from "../repositories/app.repository";
 import { UserApp } from "../models/postgres/UserApp";
 import { UserRepository } from "../repositories/user.repository";
-import bcrypt from "bcrypt";
 
 
 export class AppService {
@@ -25,7 +24,6 @@ export class AppService {
         try {
             const existingApp = await this.appRepo.findByName(appData.name!, transaction);
             if (existingApp) throw new AppCreateError("App already exists", { name: appData.name });
-            appData.hashed_secret = await bcrypt.hash(appData.hashed_secret!, 10);
 
             const app = await this.appRepo.create(appData, transaction);
             await transaction.commit();
@@ -119,10 +117,10 @@ export class AppService {
             const app = await this.appRepo.findById(params.id, transaction);
             if (!app) throw new AppFindError("App not found", { id: params.id });
 
-            const isMatch = await bcrypt.compare(params.old_hashed_secret, app.hashed_secret!);
+            const isMatch = params.old_hashed_secret === app.hashed_secret!;
             if (!isMatch) throw new IncorrectAppSecretError("Secret is incorrect", { id: params.id });
             
-            app.hashed_secret = await bcrypt.hash(params.new_hashed_secret, 10);
+            app.hashed_secret = params.new_hashed_secret, 10;
             const updated = await this.appRepo.update(params.id, { hashed_secret: app.hashed_secret }, transaction);
             
             await transaction.commit();

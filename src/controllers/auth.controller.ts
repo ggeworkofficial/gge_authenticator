@@ -4,7 +4,6 @@ import { AuthService } from "../services/auth.service";
 import { MainError } from "../errors/main.error";
 import { Logger } from "../utils/logger";
 import { AccessTokenExpiredError, AuthError } from "../errors/auth.error";
-import { error } from "console";
 
 const logger = Logger.getLogger();
 
@@ -250,11 +249,10 @@ export interface AuthPayload {
   error?: boolean
 }
 
-interface AuthAppPayload {
-  app_id?: string;
-  app_secret?: string;
-  code_challenger?: string;
-}
+type AuthAppPayload =
+  | { type: "pkce"; code_challenger: string }
+  | { type: "hmac"; app_id: string; signature: string; timestamp: number };
+
 
 const getAuthPayload = (req: Request): AuthPayload => {
   const body = (req.body && Object.keys(req.body).length > 0) 
@@ -266,7 +264,6 @@ const getAuthPayload = (req: Request): AuthPayload => {
     user_id: body.user_id || headers['x-user-id'] as string,
     device_id: body.device_id || headers['x-device-id'] as string,
     app_id: body.app_id || headers['x-app-id'] as string,
-    app_secret: body.app_secret || headers['x-app-secret'] as string,
     access_token: body.access_token || headers['x-access-token'] as string,
     refresh_token: body.refresh_token || headers['x-refresh-token'] as string,
     accessTokenTtl: body.accessTokenTtl || Number(headers['x-access-token-ttl']),
@@ -275,41 +272,84 @@ const getAuthPayload = (req: Request): AuthPayload => {
 
 const getAuthAppPayload = (req: Request): AuthAppPayload => {
   const headers = req.headers;
-  console.log(headers);
-  if (headers['x-code-challenger']) return { code_challenger: headers['x-code-challenger'] as string };
-  if (!headers['x-code-challenger'] || !headers['x-app-secret']) {
-    req.auth = {
-      error: true
-    }
-    throw new AuthError("Invalid input.\n Some attributes are missing", 400)
-  } 
-  if ((headers['x-code-challenger']) && (headers['x-app-secret'])) throw new AuthError("Invalid input :)", 400);
+
+  const appId = headers["x-app-id"] as string | undefined;
+  const codeChallenger = headers["x-code-challenger"] as string | undefined;
+  const signature = headers["x-signature"] as string | undefined;
+  const timestampRaw = headers["x-timestamp"] as string | undefined;
+
+  // app_id is ALWAYS required
+  if (!appId) {
+    throw new AuthError("Missing x-app-id", 400);
+  }
+
+  const usingPKCE = !!codeChallenger;
+  const usingHMAC = !!signature || !!timestampRaw;
+
+  // Cannot mix auth methods
+  if (usingPKCE && usingHMAC) {
+    throw new AuthError("Multiple authentication methods provided", 400);
+  }
+
+  // PKCE flow
+  if (usingPKCE) {
+    return {
+      type: "pkce",
+      code_challenger: codeChallenger!,
+    };
+  }
+
+  // HMAC flow
+  if (!signature || !timestampRaw) {
+    throw new AuthError("Missing HMAC headers", 400);
+  }
+
+  const timestamp = Number(timestampRaw);
+  if (Number.isNaN(timestamp)) {
+    throw new AuthError("Invalid timestamp", 400);
+  }
 
   return {
-    app_id: headers['x-app-id'] as string,
-    app_secret: headers['x-app-secret'] as string,
+    type: "hmac",
+    app_id: appId,
+    signature,
+    timestamp,
   };
-}
-
-export const authenticateAppController = async (req: Request, res: Response, next: NextFunction) => {
+};
 
 
+export const authenticateAppController = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
   try {
-      const payload = getAuthAppPayload(req);
+    const payload = getAuthAppPayload(req);
 
-      if ((!payload?.app_id || !payload?.app_secret) && payload.code_challenger) {
-        req.auth = {
-          code_challenger: payload.code_challenger,
-        };
-        return next();
-      }
+    // PKCE → just attach and move on
+    if (payload.type === "pkce") {
+      req.auth = {
+        code_challenger: payload.code_challenger,
+      };
+      return next();
+    }
+
+    // HMAC
     const service = new AuthService();
-    await service.authenticateApp(payload.app_id!, payload.app_secret!);
+
+    await service.authenticateAppHmac({
+      app_id: payload.app_id,
+      signature: payload.signature,
+      timestamp: payload.timestamp,
+      req,
+    });
+
     return next();
   } catch (err) {
     next(err);
   }
 };
+
 
 export const authenticateController = async (req: Request, res: Response, next: NextFunction) => {
   const payload = getAuthPayload(req);
@@ -323,7 +363,7 @@ export const authenticateController = async (req: Request, res: Response, next: 
     // Try to validate access token
     try {
 
-      const decoded = await service.authenticate(payload.access_token, payload.user_id, payload.app_id!, payload.device_id, payload.app_secret!);
+      const decoded = await service.authenticate(payload.access_token, payload.user_id, payload.app_id!, payload.device_id);
       // If valid, respond with authenticate schema
       // decode exp to date if available
       const exp = (decoded && (decoded as any).exp) ? new Date((decoded as any).exp * 1000) : undefined;

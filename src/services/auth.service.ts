@@ -1,3 +1,4 @@
+import { Request } from "express";
 import bcrypt from "bcrypt";
 import * as crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
@@ -106,12 +107,11 @@ export class AuthService {
         }
     }
 
-    public async authenticate(accessToken: string, userId: string, appId: string, deviceId: string, appSecret: string) {
+    public async authenticate(accessToken: string, userId: string, appId: string, deviceId: string) {
         try {
-            const user = await this.authRepo.findSessionByUserDevice(userId, deviceId, appId);
-            if (!user) throw new UserNotFoundError("User not found", { userId, deviceId, appId });
+            const session = await this.authRepo.findSessionByUserDevice(userId, deviceId, appId);
+            if (!session) throw new UserNotFoundError("User not found", { userId, deviceId, appId });
 
-            await this.authenticateApp(appId, appSecret);
             const decoded = jwt.verify(accessToken, this.ACCESS_SECRET) as any;
             return decoded;
         } catch (err: any) {
@@ -177,22 +177,69 @@ export class AuthService {
         }
     }
 
-    async authenticateApp(appId: string, appSecret: string): Promise<void> {
+    async authenticateAppHmac(payload: {
+        app_id: string;
+        signature: string;
+        timestamp: number;
+        req: Request;
+    }): Promise<void> {
+        const { app_id, signature, timestamp, req } = payload;
         const transaction = await this.db.getTransaction();
+
         try {
-            const app = await this.appRepo.findById(appId, transaction);
-            if (!app) throw new AppFindError("App not found", { appId });
-            if (!app.hashed_secret) throw new IncorrectAppSecretError("App secret not set", { appId });
+            const app = await this.appRepo.findById(app_id, transaction);
+            if (!app) throw new AppFindError("App not found", { app_id });
+            if (!app.hashed_secret) throw new IncorrectAppSecretError("App secret not set", { app_id });
             
-            const isMatch = await bcrypt.compare(appSecret, app.hashed_secret);
-            if (!isMatch) throw new IncorrectAppSecretError("App secret incorrect", { appId });
+            const now = Date.now();
+            const MAX_DRIFT_MS = 60_000; 
+
+            if (Math.abs(now - timestamp) > MAX_DRIFT_MS) throw new AuthError("Request timestamp expired", { app_id, timestamp });
+
+            const body = req.body && Object.keys(req.body).length
+                        ? JSON.stringify(req.body)
+                        : "";
+
+            console.log("OG URL: ", req.originalUrl);
+            const signingString = [
+                req.method.toUpperCase(),
+                req.originalUrl,
+                timestamp,
+                body,
+            ].join("|");
+
+            const expectedSignature = crypto
+                .createHmac("sha256", app.hashed_secret)
+                .update(signingString)
+                .digest("hex");
+
+            const sigOk =
+            signature.length === expectedSignature.length &&
+            crypto.timingSafeEqual(
+                Buffer.from(signature),
+                Buffer.from(expectedSignature)
+            );
+
+            if (!sigOk) throw new IncorrectAppSecretError("Invalid HMAC signature", { app_id });
             
+
             await transaction.commit();
         } catch (error) {
             await transaction.rollback();
-            if (error instanceof AppFindError) throw error;
-            if (error instanceof IncorrectAppSecretError) throw error;
-            throw new AuthError("App authentication failed", { appId, cause: error });
+
+            if (
+                error instanceof AppFindError ||
+                error instanceof IncorrectAppSecretError ||
+                error instanceof AuthError
+            ) {
+                throw error;
+            }
+
+                throw new AuthError("App authentication failed", {
+                app_id,
+                cause: error,
+            });
         }
     }
+
 }
