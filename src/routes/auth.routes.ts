@@ -6,7 +6,6 @@ import {
   refreshSchema,
   authenticateSchema,
   changePasswordSchema,
-  verifiyEmailSchema,
   verifyCodeSchema,
 } from "../validators/auth.validator";
 import { loginController, registerController, authenticateController, refreshController, verifiyController, authenticateAppController } from "../controllers/auth.controller";

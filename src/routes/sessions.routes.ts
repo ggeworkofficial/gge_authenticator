@@ -14,10 +14,11 @@ import {
 	deleteSessionsController,
 	deleteSessionByIdController,
 } from "../controllers/sessions.controller";
+import { authenticateAppController } from "../controllers/auth.controller";
 
 const router = Router();
 
-router.post("/", validateBody(createSessionSchema), createSessionController);
+router.post("/", authenticateAppController, validateBody(createSessionSchema), createSessionController);
 
 router.get("/", validateQuery(sessionFilterSchema), listSessionsController);
 router.get("/:id", validateParams(sessionIdParam), getSessionController);

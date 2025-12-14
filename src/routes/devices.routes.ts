@@ -13,10 +13,11 @@ import {
   deviceUpdateController,
   deviceDeleteController,
 } from "../controllers/device.controller";
+import { authenticateAppController } from "../controllers/auth.controller";
 
 const router = Router();
 
-router.post("/", validateBody(createDeviceSchema), deviceCreateController);
+router.post("/", authenticateAppController, validateBody(createDeviceSchema), deviceCreateController);
 
 router.get("/", validateQuery(deviceFilterSchema), deviceListController);
 router.get("/:id", validateParams(deviceIdParam), deviceGetController);

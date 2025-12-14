@@ -17,18 +17,12 @@ declare module "express-serve-static-core" {
 
 const handleDeviceApi = async (
   base: string,
-  user_id: string,
-  payload: any
+  devicePayload: any,
+  headers: any
 ) => {
-  const devicePayload = {
-    user_id,
-    device_id: payload.device_id,
-    device_name: payload.device_name,
-    device_type: payload.device_type,
-  };
-
+  const user_id = devicePayload.user_id;
   try {
-    const resp = await axios.post(`${base}/devices`, devicePayload);
+    const resp = await axios.post(`${base}/devices`, devicePayload, {headers});
     if (!resp.data || !(resp.data as any).device) throw new MainError("Device creation failed", 500, { payload: devicePayload });
     
     return (resp.data as any).device;
@@ -38,9 +32,9 @@ const handleDeviceApi = async (
     if (response?.data?.errorType === "DeviceCreateError" &&
         response.data.message === "Device already exists") 
     {
-      logger.warn(`Device already exists for user_id=${user_id}, device_id=${payload.device_id}. Fetching existing device.`);
+      logger.warn(`Device already exists for user_id=${user_id}, device_id=${devicePayload.device_id}. Fetching existing device.`);
       const existingResp = await axios.get(`${base}/devices`, {
-        params: { user_id, device_id: payload.device_id },
+        params: { user_id, device_id: devicePayload.device_id },
       });
       
       const existingDevice = (existingResp.data as any).devices?.[0];
@@ -54,9 +48,9 @@ const handleDeviceApi = async (
 };
 
 
-const handleAppApi = async (base: string, app_id: string) => {
+const handleAppApi = async (base: string, app_id: string, headers: any) => {
   try {
-    const resp = await axios.get(`${base}/apps/${app_id}`);
+    const resp = await axios.get(`${base}/apps/${app_id}`, {headers});
     if (!(resp.data as any)?.app) {
       throw new MainError("App not found", 404, { app_id });
     }
@@ -77,10 +71,11 @@ const handleAppApi = async (base: string, app_id: string) => {
 
 const handleSessionApi = async (
   base: string,
-  sessionPayload: any
+  sessionPayload: any,
+  headers: any,
 ) => {
   try {
-    const resp = await axios.post(`${base}/sessions`, sessionPayload);
+    const resp = await axios.post(`${base}/sessions`, sessionPayload, {headers});
     return resp.data;
   } catch (err: any) {
     const apiError = err?.response?.data;
@@ -109,8 +104,27 @@ export const returnCodeChallange = async (service: any, response: any, code_chal
   }
 }
 
+export const returnInternalSigniture = async (service: AuthService | null, method: string, url: string, body?: any) => {
+  try {
+    if (!service) {
+      service = new AuthService();
+    }
+
+    let headers;
+    const internalSigniture = await service.createInternalSignature({method, url, body})
+    headers = {
+      'x-internal-signature': internalSigniture.signature,
+      'x-internal-timestamp': internalSigniture.timestamp
+    }
+    return headers;
+  } catch(error) {
+    throw error
+  }
+}
+
 export const loginController = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body;
+  let headers;
   const base = getBaseUrl();
   const code_challange = req.auth?.code_challenger;
   let response;
@@ -118,13 +132,24 @@ export const loginController = async (req: Request, res: Response, next: NextFun
 
   try {
     const service = new AuthService();
+    
+    
     const user = await service.login({
       email: payload.email,
       password_hash: payload.password_hash,
     });
+    const devicePayload = {
+      user_id: user.id,
+      device_id: payload.device_id,
+      device_name: payload.device_name,
+      device_type: payload.device_type,
+    };
+    headers = await returnInternalSigniture(service, 'POST', '/devices', devicePayload);
 
-    const device = await handleDeviceApi(base, user.id, payload);
-    const app = await handleAppApi(base, payload.app_id);
+    const device = await handleDeviceApi(base, devicePayload, headers);
+
+    headers = await returnInternalSigniture(service, 'GET', `/apps/${payload.app_id}`);
+    const app = await handleAppApi(base, payload.app_id, headers);
 
     const sessionPayload = {
       user_id: user.id,
@@ -135,7 +160,8 @@ export const loginController = async (req: Request, res: Response, next: NextFun
       refreshTokenttl: payload.refreshTokenttl,
     };
 
-    const session: any = await handleSessionApi(base, sessionPayload);
+    headers = await returnInternalSigniture(service, 'POST', '/sessions', sessionPayload);
+    const session: any = await handleSessionApi(base, sessionPayload, headers);
     response = {
       user_id: user.id,
       device_pm_id: device.id,
@@ -156,9 +182,7 @@ export const registerController = async (req: Request, res: Response, next: Next
   const payload = req.body as any;
   const base = getBaseUrl();
   const code_challange = req.auth?.code_challenger;
-  const headers = {
-    "x-code-challenger": code_challange,
-  };
+  let headers;
   try {
     // 1) create user via internal users API
     let createResp;
@@ -174,6 +198,8 @@ export const registerController = async (req: Request, res: Response, next: Next
         is_admin: payload.is_admin,
         is_verified: payload.is_verified,
       };
+
+      headers = await returnInternalSigniture(null, 'POST', '/users', userPayload);
       createResp = await axios.post(`${base}/users`, userPayload, {headers});
     } catch (err: any) {
       const apiError = err?.response?.data;
@@ -203,6 +229,7 @@ export const registerController = async (req: Request, res: Response, next: Next
       if (payload.accessTokenTtl) loginPayload.accessTokenTtl = payload.accessTokenTtl;
       if (payload.refreshTokenttl) loginPayload.refreshTokenttl = payload.refreshTokenttl;
 
+      headers = await returnInternalSigniture(null, 'POST', '/auth/login', loginPayload);
       const loginResp = await axios.post(`${base}/auth/login`, loginPayload, {headers});
 
       return res.status(loginResp.status || 200).json(loginResp.data);
@@ -250,8 +277,21 @@ export interface AuthPayload {
 }
 
 type AuthAppPayload =
-  | { type: "pkce"; code_challenger: string }
-  | { type: "hmac"; app_id: string; signature: string; timestamp: number };
+  | {
+      type: "pkce";
+      code_challenger: string;
+    }
+  | {
+      type: "hmac";
+      app_id: string;
+      signature: string;
+      timestamp: number;
+    }
+  | {
+      type: "internal";
+      signature: string;
+      timestamp: number;
+    };
 
 
 const getAuthPayload = (req: Request): AuthPayload => {
@@ -275,47 +315,80 @@ const getAuthAppPayload = (req: Request): AuthAppPayload => {
 
   const appId = headers["x-app-id"] as string | undefined;
   const codeChallenger = headers["x-code-challenger"] as string | undefined;
-  const signature = headers["x-signature"] as string | undefined;
-  const timestampRaw = headers["x-timestamp"] as string | undefined;
 
-  // app_id is ALWAYS required
-  if (!appId) {
-    throw new AuthError("Missing x-app-id", 400);
-  }
+  const appSignature = headers["x-signature"] as string | undefined;
+  const appTimestampRaw = headers["x-timestamp"] as string | undefined;
+
+  const internalSignature = headers["x-internal-signature"] as string | undefined;
+  const internalTimestampRaw = headers["x-internal-timestamp"] as string | undefined;
 
   const usingPKCE = !!codeChallenger;
-  const usingHMAC = !!signature || !!timestampRaw;
+  const usingAppHmac = !!appSignature || !!appTimestampRaw;
+  const usingInternalHmac = !!internalSignature || !!internalTimestampRaw;
 
-  // Cannot mix auth methods
-  if (usingPKCE && usingHMAC) {
+  const enabledMethods = [usingPKCE, usingAppHmac, usingInternalHmac].filter(Boolean)
+    .length;
+
+  if (enabledMethods === 0) {
+    throw new AuthError("No authentication method provided", 400);
+  }
+
+  if (enabledMethods > 1) {
     throw new AuthError("Multiple authentication methods provided", 400);
   }
 
-  // PKCE flow
+  // 🚫 Internal HMAC must NOT include app context
+  if (usingInternalHmac && (appId || codeChallenger || appSignature)) {
+    throw new AuthError("Invalid internal authentication headers", 400);
+  }
+
+  // 🔐 PKCE
   if (usingPKCE) {
+    if (!appId) throw new AuthError("Missing x-app-id", 400);
+
     return {
       type: "pkce",
       code_challenger: codeChallenger!,
     };
   }
 
-  // HMAC flow
-  if (!signature || !timestampRaw) {
-    throw new AuthError("Missing HMAC headers", 400);
+  // 🔐 App HMAC
+  if (usingAppHmac) {
+    if (!appId) throw new AuthError("Missing x-app-id", 400);
+    if (!appSignature || !appTimestampRaw) {
+      throw new AuthError("Missing HMAC headers", 400);
+    }
+
+    const timestamp = Number(appTimestampRaw);
+    if (Number.isNaN(timestamp)) {
+      throw new AuthError("Invalid timestamp", 400);
+    }
+
+    return {
+      type: "hmac",
+      app_id: appId,
+      signature: appSignature,
+      timestamp,
+    };
   }
 
-  const timestamp = Number(timestampRaw);
+  // 🔐 INTERNAL HMAC
+  if (!internalSignature || !internalTimestampRaw) {
+    throw new AuthError("Missing internal HMAC headers", 400);
+  }
+
+  const timestamp = Number(internalTimestampRaw);
   if (Number.isNaN(timestamp)) {
-    throw new AuthError("Invalid timestamp", 400);
+    throw new AuthError("Invalid internal timestamp", 400);
   }
 
   return {
-    type: "hmac",
-    app_id: appId,
-    signature,
+    type: "internal",
+    signature: internalSignature,
     timestamp,
   };
 };
+
 
 
 export const authenticateAppController = async (
@@ -336,13 +409,21 @@ export const authenticateAppController = async (
 
     // HMAC
     const service = new AuthService();
-
-    await service.authenticateAppHmac({
-      app_id: payload.app_id,
-      signature: payload.signature,
-      timestamp: payload.timestamp,
-      req,
-    });
+    if (payload.type === "hmac") {
+      await service.authenticateAppHmac({
+        app_id: payload.app_id,
+        signature: payload.signature,
+        timestamp: payload.timestamp,
+        req,
+      });
+      return next();
+    }
+    
+    if (payload.type === "internal") {
+      await service.validateInternalHmac({ ...payload, req });
+      return next();
+    }
+    
 
     return next();
   } catch (err) {

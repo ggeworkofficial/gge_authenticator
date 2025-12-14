@@ -21,6 +21,7 @@ import {
   appCreateUserController, 
   changeAppSecretController
 } from "../controllers/app.controller";
+import { authenticateAppController } from "../controllers/auth.controller";
 
 const router = Router();
 
@@ -28,7 +29,7 @@ router.post("/", validateBody(createAppSchema), appCreateController);
 router.post("/users", validateBody(createUserAppSchema), appCreateUserController);
 
 router.get("/", validateQuery(appsFilterQuerySchema), appListController);
-router.get("/:id", validateParams(appIdParam), appGetController);
+router.get("/:id", authenticateAppController, validateParams(appIdParam), appGetController);
 
 router.put("/:id", validateParams(appIdParam), validateBody(updateAppSchema), appUpdateController);
 router.patch("/change-secret", validateBody(changeAppsSecretSchema), changeAppSecretController);
