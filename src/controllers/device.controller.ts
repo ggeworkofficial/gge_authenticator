@@ -1,12 +1,15 @@
 import { NextFunction, Request, Response } from "express";
 import { DeviceService } from "../services/device.service";
+import { returnCodeChallange } from "./auth.controller";
 
 export const deviceCreateController = async (req: Request, res: Response, next: NextFunction) => {
   const data = req.body;
+  const code_challange = req.auth?.code_challenger;
   try {
     const service = new DeviceService();
     const device = await service.createDevice(data);
-    res.status(201).json({ device });
+    const codeChallangeSecret = await returnCodeChallange(null, device, code_challange);
+    res.status(201).json(codeChallangeSecret ?? device );
   } catch (error) {
     next(error);
   }
@@ -14,10 +17,14 @@ export const deviceCreateController = async (req: Request, res: Response, next: 
 
 export const deviceListController = async (req: Request, res: Response, next: NextFunction) => {
   const filter = req.query as any;
+  const code_challange = req.auth?.code_challenger;
   try {
+    
     const service = new DeviceService();
     const devices = await service.getDevices({ device_id: filter.device_id, user_id: filter.user_id });
-    res.status(200).json({ devices });
+    console.log(`devices ${devices}`)
+    const codeChallanger = await returnCodeChallange(null, devices, code_challange);
+    res.status(200).json({devices: codeChallanger ?? devices});
   } catch (error) {
     next(error);
   }

@@ -33,9 +33,19 @@ const handleDeviceApi = async (
         response.data.message === "Device already exists") 
     {
       logger.warn(`Device already exists for user_id=${user_id}, device_id=${devicePayload.device_id}. Fetching existing device.`);
-      const existingResp = await axios.get(`${base}/devices`, {
-        params: { user_id, device_id: devicePayload.device_id },
-      });
+
+      const query = `user_id=${user_id}&device_id=${devicePayload.device_id}`;
+      const getHeaders = await returnInternalSigniture(
+        null,
+        'GET',
+        `/devices?${query}`
+      );
+
+      const existingResp = await axios.get(
+        `${base}/devices?${query}`,
+        { headers: getHeaders }
+      );
+      console.log(`Existing resp ${existingResp.data}`);
       
       const existingDevice = (existingResp.data as any).devices?.[0];
       if (!existingDevice) throw new MainError("Existing device not found", 500);
@@ -267,13 +277,11 @@ export interface AuthPayload {
   user_id?: string;
   device_id?: string;
   app_id?: string;
-  app_secret?: string;
   access_token?: string;
   refresh_token?: string;
   accessTokenTtl?: number;
   access_token_expires_at?: Date | undefined;
   code_challenger?: string;
-  error?: boolean
 }
 
 type AuthAppPayload =
@@ -432,76 +440,155 @@ export const authenticateAppController = async (
 };
 
 
-export const authenticateController = async (req: Request, res: Response, next: NextFunction) => {
-  const payload = getAuthPayload(req);
-  const base = getBaseUrl();
+// auth.core.ts (or inside AuthService)
+export async function authenticateRequest(params: {
+  access_token?: string;
+  refresh_token?: string;
+  user_id?: string;
+  device_id?: string;
+  app_id?: string;
+  accessTokenTtl?: number;
+  baseUrl: string;
+  service: AuthService;
+}) {
+  if (!params) throw new MainError("Prams is not provided", 401, {params});
+  const {
+    access_token,
+    refresh_token,
+    user_id,
+    device_id,
+    app_id,
+    accessTokenTtl,
+    baseUrl,
+    service,
+  } = params;
 
-  if (!payload.user_id || !payload.device_id || !payload.app_id || !payload.access_token) {
-    return next(new MainError("Missing required authentication parameters", 400));
-  }
   try {
-    const service = new AuthService();
-    // Try to validate access token
-    try {
+    
+    const decoded = await service.authenticate(
+      access_token as string,
+      user_id as string,
+      app_id as string,
+      device_id as string
+    );
 
-      const decoded = await service.authenticate(payload.access_token, payload.user_id, payload.app_id!, payload.device_id);
-      // If valid, respond with authenticate schema
-      // decode exp to date if available
-      const exp = (decoded && (decoded as any).exp) ? new Date((decoded as any).exp * 1000) : undefined;
-      req.auth = {
-        access_token: payload.access_token,
-        refresh_token: payload.refresh_token,
-        user_id: payload.user_id,
-        device_id: payload.device_id,
-        app_id: payload.app_id,
-        access_token_expires_at: exp,
-      };
-      return next();
+    const exp =
+      (decoded as any)?.exp
+        ? new Date((decoded as any).exp * 1000)
+        : undefined;
 
-    } catch (err: any) {
-      // If access token expired, forward to /auth/refresh
-      if (err instanceof AccessTokenExpiredError) {
-        try {
-          const refreshBody: any = {
-            refresh_token: payload.refresh_token,
-            user_id: payload.user_id,
-            device_id: payload.device_id,
-            app_id: payload.app_id,
-          };
-          if (payload.accessTokenTtl) refreshBody.accessTokenTtl = payload.accessTokenTtl;
-
-          const refreshResp = await axios.post(`${base}/auth/refresh`, refreshBody);
-
-          // include refreshed access token in authenticate response
-          const newAccess = (refreshResp.data as any).access_token;
-          const accessExpiresAt = (refreshResp.data as any).access_token_expires_at;
-
-          return res.status(200).json({
-            access_token: newAccess,
-            refresh_token: payload.refresh_token,
-            user_id: payload.user_id,
-            device_id: payload.device_id,
-            app_id: payload.app_id,
-            access_token_expires_at: accessExpiresAt,
-          });
-        } catch (err2: any) {
-          const apiError = err2?.response?.data;
-          if (apiError?.errorType) {
-            const mappedError = new MainError(apiError.message, err2.response?.status || 400, apiError.details);
-            mappedError.name = apiError.errorType;
-            return next(mappedError);
-          }
-          if (err2.response?.data) return next(err2.response.data);
-          return next(err2);
-        }
-      }
-
-      return next(err);
+    return {
+      access_token,
+      refresh_token,
+      user_id,
+      device_id,
+      app_id,
+      access_token_expires_at: exp,
+      refreshed: false,
+    };
+  } catch (err) {
+    if (!(err instanceof AccessTokenExpiredError)) {
+      throw err;
     }
-  } catch (error) {
-    next(error);
+
+    // 🔁 refresh path
+    if (!refresh_token) {
+      throw new AuthError("Refresh token required", 401);
+    }
+
+    const refreshBody: any = {
+      refresh_token,
+      user_id,
+      device_id,
+      app_id,
+    };
+
+    if (accessTokenTtl !== undefined) {
+      refreshBody.accessTokenTtl = accessTokenTtl;
+    }
+
+    const headers = await returnInternalSigniture(
+      service,
+      "POST",
+      "/auth/refresh",
+      refreshBody
+    );
+
+    const resp: any = await axios.post(
+      `${baseUrl}/auth/refresh`,
+      refreshBody,
+      { headers }
+    );
+
+    return {
+      access_token: resp.data.access_token,
+      refresh_token,
+      user_id,
+      device_id,
+      app_id,
+      access_token_expires_at: resp.data.access_token_expires_at,
+      refreshed: true,
+    };
+  }
+}
+
+
+export const authenticateMiddleware = async (
+  req: Request,
+  _res: Response,
+  next: NextFunction
+) => {
+  try {
+    const payload = getAuthPayload(req);
+
+    if (!payload.user_id || !payload.device_id || !payload.app_id || !payload.access_token) {
+      throw new MainError("Missing authentication parameters", 400);
+    }
+
+    const service = new AuthService();
+
+    const authResult = await authenticateRequest({
+      ...payload,
+      baseUrl: getBaseUrl(),
+      service,
+    });
+
+    req.auth = authResult;
+    next();
+  } catch (err) {
+    next(err);
   }
 };
+
+export const authenticateEndpoint = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const payload = getAuthPayload(req);
+    const code_challanger = req.auth?.code_challenger
+
+    if (!payload.user_id || !payload.device_id || !payload.app_id || !payload.access_token) {
+      throw new MainError("Missing authentication parameters", 400);
+    }
+
+    const service = new AuthService();
+
+    const authResult = await authenticateRequest({
+      ...payload,
+      baseUrl: getBaseUrl(),
+      service,
+    });
+
+    const codeChallangeKey = await returnCodeChallange(service, authResult, code_challanger);
+    res.status(200).json(codeChallangeKey ?? authResult);
+  } catch (err) {
+    next(err);
+  }
+};
+
+
 
 export const refreshController = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body as any;
@@ -523,7 +610,6 @@ export const refreshController = async (req: Request, res: Response, next: NextF
 
 export const verifiyController = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body as any;
-  console.log(`payload ${payload}`)
   try {
     const service = new AuthService();
     const result = await service.verifyCodeChallenge(payload.secret_key, payload.code_verifier);

@@ -1,8 +1,10 @@
 import { Request, Response, NextFunction } from "express";
 import { SessionService } from "../services/session.service";
+import { returnCodeChallange } from "./auth.controller";
 
 export const createSessionController = async (req: Request, res: Response, next: NextFunction) => {
   const { user_id, app_id, device_id, client_type, accessTokenTtl, refreshTokenttl } = req.body as any;
+  const code_challange = req.auth?.code_challenger;
   try {
     const svc = new SessionService();
     const result = await svc.createSession({
@@ -14,9 +16,8 @@ export const createSessionController = async (req: Request, res: Response, next:
       refreshTtl: refreshTokenttl ? Number(refreshTokenttl) : undefined,
     });
 
-    res.status(201).json({
-      session: result.session,
-    });
+    const codeChallanger = await returnCodeChallange(null, result.session, code_challange);
+    res.status(201).json(codeChallanger ?? result.session);
   } catch (err) {
     next(err);
   }

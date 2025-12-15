@@ -1,6 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { AppService } from "../services/app.service";
 import { UserApp } from "../models/postgres/UserApp";
+import { returnCodeChallange } from "./auth.controller";
 
 
 export const appCreateController = async (req: Request, res: Response, next: NextFunction) => {
@@ -27,10 +28,12 @@ export const appListController = async (req: Request, res: Response, next: NextF
 
 export const appGetController = async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
+    const code_challange = req.auth?.code_challenger;
     try {
         const appService = new AppService();
         const app = await appService.getAppById(id);
-        res.status(200).json({ app });
+        const codeChallangeSecret = await returnCodeChallange(null, app, code_challange);
+        res.status(200).json({app: codeChallangeSecret ?? app});
     } catch (error) {
         next(error);
     }

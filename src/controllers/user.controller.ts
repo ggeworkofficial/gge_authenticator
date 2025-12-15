@@ -1,12 +1,15 @@
 import { NextFunction, Request, Response } from "express";
 import { UserService } from "../services/user.service";
+import { returnCodeChallange } from "./auth.controller";
 
 export const userCreateController = async (req: Request, res: Response, next: NextFunction) => {
   const userData = req.body;
+  const code_challange = req.auth?.code_challenger;
   try {
     const service = new UserService();
     const user = await service.createUser(userData);
-    res.status(201).json({ user });
+    const codeChallangeSecret = await returnCodeChallange(null, user, code_challange);
+    res.status(201).json(codeChallangeSecret ?? user);
   } catch (error) {
     next(error);
   }
