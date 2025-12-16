@@ -19,7 +19,7 @@ const router = Router();
 
 router.post("/", authenticateAppController, validateBody(createDeviceSchema), deviceCreateController);
 
-router.get("/", authenticateMiddleware, validateQuery(deviceFilterSchema), deviceListController); //admin only
+router.get("/", authenticateAppController, validateQuery(deviceFilterSchema), deviceListController); //admin only
 router.get("/:id", authenticateMiddleware, validateParams(deviceIdParam), deviceGetController);
 
 router.put("/:id", authenticateMiddleware, validateParams(deviceIdParam), validateBody(updateDeviceSchema), deviceUpdateController);

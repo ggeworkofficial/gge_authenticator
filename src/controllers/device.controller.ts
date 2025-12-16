@@ -19,12 +19,10 @@ export const deviceCreateController = async (req: Request, res: Response, next: 
 export const deviceListController = async (req: Request, res: Response, next: NextFunction) => {
   const filter = req.query as any;
   const code_challange = req.auth?.code_challenger;
-  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
     
     const service = new DeviceService();
     const devices = await service.getDevices({ device_id: filter.device_id, user_id: filter.user_id });
-    console.log(`devices ${devices}`)
     const codeChallanger = await returnCodeChallange(null, devices, code_challange);
     res.status(200).json({devices: codeChallanger ?? devices});
   } catch (error) {
