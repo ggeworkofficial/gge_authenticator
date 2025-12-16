@@ -260,6 +260,7 @@ export const registerController = async (req: Request, res: Response, next: Next
 
 export const changePasswordController = async (req: Request, res: Response, next: NextFunction) => {
   const payload = req.body as any;
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
     const service = new AuthService();
     const updated = await service.changePassword({
@@ -507,26 +508,22 @@ export async function authenticateRequest(params: {
       refreshBody.accessTokenTtl = accessTokenTtl;
     }
 
-    const headers = await returnInternalSigniture(
-      service,
-      "POST",
-      "/auth/refresh",
-      refreshBody
-    );
-
-    const resp: any = await axios.post(
-      `${baseUrl}/auth/refresh`,
-      refreshBody,
-      { headers }
-    );
+    const refreshResult = await service.refreshAccessToken({
+      refresh_token,
+      user_id: user_id as string,
+      device_id: device_id as string,
+      app_id: app_id as string,
+      accessTtl:
+        accessTokenTtl !== undefined ? Number(accessTokenTtl) : undefined,
+    });
 
     return {
-      access_token: resp.data.access_token,
+      access_token: refreshResult.access_token,
       refresh_token,
       user_id,
       device_id,
       app_id,
-      access_token_expires_at: resp.data.access_token_expires_at,
+      access_token_expires_at: refreshResult.access_token_expires_at,
       refreshed: true,
     };
   }
