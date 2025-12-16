@@ -13,7 +13,7 @@ const envPath = path.join(__dirname, "..", ".env");
 
 if (!fs.existsSync(envPath)) {
   const envContent =
-    `PORT=5000
+    `PORT=PORT_HERE
 DB_PORT=PORT_HERE
 DB_NAME=DB_NAME_HERE
 DB_USER=USER_HERE
@@ -29,6 +29,7 @@ REDIS_PORT=REDIS_PORT_HERE
 ACCESS_TOKEN_SECRET=SECRET_HERE
 REFRESH_TOKEN_SECRET=SECRET_HERE
 ACCESS_TOKEN_TTL=TTL_HERE
+REFRESH_TOKEN_TTL=TTL_HERE
 INTERNAL_SECRET=Your_Internal_Secret
 `;
 
