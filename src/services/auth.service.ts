@@ -16,6 +16,7 @@ import {
   RefreshTokenNotFoundError,
   AccessTokenError,
   AuthError,
+  RefreshTokenReplayError,
 } from "../errors/auth.error";
 import dotenv from "dotenv";
 import { AppRepository } from "../repositories/app.repository";
@@ -35,6 +36,7 @@ export class AuthService {
     private ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
     private REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
     private ACCESS_TTL = Number(process.env.ACCESS_TOKEN_TTL) || 900;
+    private REFRESH_TTL = Number(process.env.REFRESH_TTL as string) || 604800;
     private db = Postgres.getInstance();
 
     async login(payload: LoginPayload): Promise<User> {
@@ -121,31 +123,111 @@ export class AuthService {
         }
     }
 
-    public async refreshAccessToken(params: { refresh_token: string; user_id: string; device_id: string; app_id: string; accessTtl?: number }) {
-        const { refresh_token, user_id, device_id, app_id, accessTtl } = params;
-        try {  
-            const session = await this.authRepo.findSessionByRefreshToken(refresh_token);
-            if (!session) throw new RefreshTokenNotFoundError("Refresh token session not found", { user_id, device_id, app_id });
-            
+    public async refreshAccessToken(params: {
+        refresh_token: string;
+        user_id: string;
+        device_id: string;
+        app_id: string;
+        accessTtl?: number;
+        refreshTtl?: number;
+        }) {
+        const {
+            refresh_token,
+            user_id,
+            device_id,
+            app_id,
+            accessTtl,
+            refreshTtl
+        } = params;
+
+        let session;
+        try {
+            session = await this.authRepo.findSessionByRefreshToken(refresh_token);
+            if (!session) {
+            throw new RefreshTokenNotFoundError("Refresh token session not found", {
+                user_id,
+                device_id,
+                app_id,
+            });
+            }
+
             jwt.verify(refresh_token, this.REFRESH_SECRET);
         } catch (err: any) {
-            if (err && err.name === "TokenExpiredError") throw new RefreshTokenExpiredError("Refresh token expired", { user_id, device_id, app_id });
+            if (err?.name === "TokenExpiredError") {
+            throw new RefreshTokenExpiredError("Refresh token expired", {
+                user_id,
+                device_id,
+                app_id,
+            });
+            }
             throw err;
         }
 
         const now = Math.floor(Date.now() / 1000);
-        const ttl = typeof accessTtl === "number" && !isNaN(accessTtl) ? accessTtl : this.ACCESS_TTL;
-        const accessExp = now + ttl;
-        const accessToken = jwt.sign({ sub: user_id, app: app_id, device: device_id, type: "access" }, this.ACCESS_SECRET, { expiresIn: ttl });
+
+        // TTLs
+        const accessTTL =
+            typeof accessTtl === "number" && !isNaN(accessTtl)
+            ? accessTtl
+            : this.ACCESS_TTL;
+
+        const refreshTTL =
+            typeof refreshTtl === "number" && !isNaN(refreshTtl)
+            ? refreshTtl
+            : this.REFRESH_TTL;
+
+        // Generate new tokens
+        const accessExp = now + accessTTL;
+        const refreshExp = now + refreshTTL;
+
+        const newAccessToken = jwt.sign(
+            { sub: user_id, app: app_id, device: device_id, type: "access" },
+            this.ACCESS_SECRET,
+            { expiresIn: accessTTL }
+        );
+
+        const newRefreshToken = jwt.sign(
+            { sub: user_id, app: app_id, device: device_id, type: "refresh" },
+            this.REFRESH_SECRET,
+            { expiresIn: refreshTTL }
+        );
+
         const accessTokenExpiresAt = new Date(accessExp * 1000);
+        const refreshTokenExpiresAt = new Date(refreshExp * 1000);
+        const rotateResult = await this.authRepo.rotateRefreshToken(
+            user_id,
+            device_id,
+            app_id,
+            refresh_token,
+            newRefreshToken,
+            refreshTokenExpiresAt
+        );
 
-        await this.authRepo.updateAccessTokenForSession(user_id, device_id, app_id, accessToken, accessTokenExpiresAt);
+        if (rotateResult.matchedCount === 0) {
+            throw new RefreshTokenReplayError("Refresh token replay detected", {
+                user_id,
+                device_id,
+                app_id,
+            });
+        }
 
-        return { 
-            access_token: accessToken, 
-            access_token_expires_at: accessTokenExpiresAt 
+        // Update access token
+        await this.authRepo.updateAccessTokenForSession(
+            user_id,
+            device_id,
+            app_id,
+            newAccessToken,
+            accessTokenExpiresAt
+        );
+
+        return {
+            access_token: newAccessToken,
+            access_token_expires_at: accessTokenExpiresAt,
+            refresh_token: newRefreshToken,
+            refresh_token_expires_at: refreshTokenExpiresAt,
         };
-    }
+        }
+
 
     async changePassword(params: { user_id: string; old_password_hash: string; new_password_hash: string }): Promise<User> {
         const db = Postgres.getInstance();

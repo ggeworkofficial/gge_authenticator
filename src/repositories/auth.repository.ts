@@ -40,6 +40,31 @@ export class AuthRepository {
     return res;
   }
 
+  public rotateRefreshToken(
+    userId: string,
+    deviceId: string,
+    appId: string,
+    oldRefreshToken: string,
+    newRefreshToken: string,
+    refreshExpiresAt: Date
+  ) {
+    return Token.updateOne(
+      {
+        userId,
+        deviceId,
+        appId,
+        refreshToken: oldRefreshToken
+      },
+      {
+        $set: {
+          refreshToken: newRefreshToken,
+          refreshTokenExpiresAt: refreshExpiresAt
+        }
+      }
+    );
+  }
+
+
   public async storeCodeChallange(key: string, data: {code_challange: string, response: any}): Promise<void> {
     await this.redis.set(key, JSON.stringify(data), "EX", 300);
   }

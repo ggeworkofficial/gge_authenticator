@@ -281,6 +281,7 @@ export interface AuthPayload {
   access_token?: string;
   refresh_token?: string;
   accessTokenTtl?: number;
+  refreshTokenTtl?: number;
   access_token_expires_at?: Date | undefined;
   code_challenger?: string;
 }
@@ -316,6 +317,7 @@ const getAuthPayload = (req: Request): AuthPayload => {
     access_token: body.access_token || headers['x-access-token'] as string,
     refresh_token: body.refresh_token || headers['x-refresh-token'] as string,
     accessTokenTtl: body.accessTokenTtl || Number(headers['x-access-token-ttl']),
+    refreshTokenTtl: body.refreshTokenTtl || Number(headers['x-refresh-token-ttl'])
   };
 };
 
@@ -449,6 +451,7 @@ export async function authenticateRequest(params: {
   device_id?: string;
   app_id?: string;
   accessTokenTtl?: number;
+  refreshTokenTtl?: number;
   baseUrl: string;
   service: AuthService;
 }) {
@@ -460,6 +463,7 @@ export async function authenticateRequest(params: {
     device_id,
     app_id,
     accessTokenTtl,
+    refreshTokenTtl,
     baseUrl,
     service,
   } = params;
@@ -513,8 +517,8 @@ export async function authenticateRequest(params: {
       user_id: user_id as string,
       device_id: device_id as string,
       app_id: app_id as string,
-      accessTtl:
-        accessTokenTtl !== undefined ? Number(accessTokenTtl) : undefined,
+      accessTtl: accessTokenTtl !== undefined ? Number(accessTokenTtl) : undefined,
+      refreshTtl: refreshTokenTtl !== undefined ? Number(refreshTokenTtl) : undefined
     });
 
     return {
