@@ -13,17 +13,17 @@ import {
   deviceUpdateController,
   deviceDeleteController,
 } from "../controllers/device.controller";
-import { authenticateAppController } from "../controllers/auth.controller";
+import { authenticateAppController, authenticateMiddleware } from "../controllers/auth.controller";
 
 const router = Router();
 
 router.post("/", authenticateAppController, validateBody(createDeviceSchema), deviceCreateController);
 
-router.get("/", validateQuery(deviceFilterSchema), deviceListController);
-router.get("/:id", validateParams(deviceIdParam), deviceGetController);
+router.get("/", authenticateMiddleware, validateQuery(deviceFilterSchema), deviceListController); //admin only
+router.get("/:id", authenticateMiddleware, validateParams(deviceIdParam), deviceGetController);
 
-router.put("/:id", validateParams(deviceIdParam), validateBody(updateDeviceSchema), deviceUpdateController);
+router.put("/:id", authenticateMiddleware, validateParams(deviceIdParam), validateBody(updateDeviceSchema), deviceUpdateController);
 
-router.delete("/", validateQuery(deviceFilterSchema), deviceDeleteController);
+router.delete("/", authenticateMiddleware, validateQuery(deviceFilterSchema), deviceDeleteController);
 
 export default router;

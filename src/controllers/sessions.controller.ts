@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { SessionService } from "../services/session.service";
 import { returnCodeChallange } from "./auth.controller";
+import { AuthError } from "../errors/auth.error";
 
 export const createSessionController = async (req: Request, res: Response, next: NextFunction) => {
   const { user_id, app_id, device_id, client_type, accessTokenTtl, refreshTokenttl } = req.body as any;
@@ -25,6 +26,7 @@ export const createSessionController = async (req: Request, res: Response, next:
 
 export const listSessionsController = async (req: Request, res: Response, next: NextFunction) => {
   const filter = req.query as any;
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
     const svc = new SessionService();
     const rows = await svc.listSessions(filter);
@@ -36,6 +38,7 @@ export const listSessionsController = async (req: Request, res: Response, next: 
 
 export const getSessionController = async (req: Request, res: Response, next: NextFunction) => {
   const id = req.params.id as string;
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
     const svc = new SessionService();
     const row = await svc.getSessionById(id);
@@ -47,6 +50,7 @@ export const getSessionController = async (req: Request, res: Response, next: Ne
 
 export const updateSessionController = async (req: Request, res: Response, next: NextFunction) => {
   const id = req.params.id as string;
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   const body = req.body as any;
   try {
     const svc = new SessionService();
@@ -59,6 +63,7 @@ export const updateSessionController = async (req: Request, res: Response, next:
 
 export const deleteSessionsController = async (req: Request, res: Response, next: NextFunction) => {
   const filter = req.query as any;
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
     const svc = new SessionService();
     const deleted = await svc.deleteSessionsByFilter(filter);
@@ -70,6 +75,7 @@ export const deleteSessionsController = async (req: Request, res: Response, next
 
 export const deleteSessionByIdController = async (req: Request, res: Response, next: NextFunction) => {
   const id = req.params.id as string;
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
     const svc = new SessionService();
     const deleted = await svc.deleteSessionById(id);

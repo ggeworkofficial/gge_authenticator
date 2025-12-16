@@ -21,20 +21,20 @@ import {
   appCreateUserController, 
   changeAppSecretController
 } from "../controllers/app.controller";
-import { authenticateAppController } from "../controllers/auth.controller";
+import { authenticateAppController, authenticateMiddleware } from "../controllers/auth.controller";
 
 const router = Router();
 
-router.post("/", validateBody(createAppSchema), appCreateController);
-router.post("/users", validateBody(createUserAppSchema), appCreateUserController);
+router.post("/", authenticateMiddleware, validateBody(createAppSchema), appCreateController); //admin only
+router.post("/users", authenticateMiddleware, validateBody(createUserAppSchema), appCreateUserController); //This might need to collab with POST /apps
 
-router.get("/", validateQuery(appsFilterQuerySchema), appListController);
+router.get("/", authenticateMiddleware, validateQuery(appsFilterQuerySchema), appListController);
 router.get("/:id", authenticateAppController, validateParams(appIdParam), appGetController);
 
-router.put("/:id", validateParams(appIdParam), validateBody(updateAppSchema), appUpdateController);
-router.patch("/change-secret", validateBody(changeAppsSecretSchema), changeAppSecretController);
+router.put("/:id", authenticateMiddleware, validateParams(appIdParam), validateBody(updateAppSchema), appUpdateController); //admin only
+router.patch("/change-secret", authenticateMiddleware, validateBody(changeAppsSecretSchema), changeAppSecretController); //admin only
 
-router.delete("/:id", validateParams(appIdParam), appDeleteController);
+router.delete("/:id", authenticateMiddleware, validateParams(appIdParam), appDeleteController); //admin only
 // router.delete('/' validateQuery(appsFilterQuerySearch), appDeleteallController);
 
 export default router;

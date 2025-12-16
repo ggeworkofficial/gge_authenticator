@@ -14,18 +14,18 @@ import {
 	deleteSessionsController,
 	deleteSessionByIdController,
 } from "../controllers/sessions.controller";
-import { authenticateAppController } from "../controllers/auth.controller";
+import { authenticateAppController, authenticateMiddleware } from "../controllers/auth.controller";
 
 const router = Router();
 
 router.post("/", authenticateAppController, validateBody(createSessionSchema), createSessionController);
 
-router.get("/", validateQuery(sessionFilterSchema), listSessionsController);
-router.get("/:id", validateParams(sessionIdParam), getSessionController);
+router.get("/", authenticateMiddleware, validateQuery(sessionFilterSchema), listSessionsController); //admin
+router.get("/:id", authenticateMiddleware, validateParams(sessionIdParam), getSessionController);
 
-router.put("/:id", validateParams(sessionIdParam), validateBody(updateSessionSchema), updateSessionController);
+router.put("/:id", authenticateMiddleware, validateParams(sessionIdParam), validateBody(updateSessionSchema), updateSessionController);
 
-router.delete("/", validateQuery(sessionFilterSchema), deleteSessionsController);
-router.delete("/:id", validateParams(sessionIdParam), deleteSessionByIdController);
+router.delete("/", authenticateMiddleware, validateQuery(sessionFilterSchema), deleteSessionsController);
+router.delete("/:id", authenticateMiddleware, validateParams(sessionIdParam), deleteSessionByIdController);
 
 export default router;

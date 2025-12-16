@@ -8,7 +8,7 @@ import {
   changePasswordSchema,
   verifyCodeSchema,
 } from "../validators/auth.validator";
-import { loginController, registerController, refreshController, verifiyController, authenticateAppController, authenticateEndpoint } from "../controllers/auth.controller";
+import { loginController, registerController, refreshController, verifiyController, authenticateAppController, authenticateEndpoint, authenticateMiddleware } from "../controllers/auth.controller";
 import { changePasswordController } from "../controllers/auth.controller";
 
 const router = Router();
@@ -20,6 +20,6 @@ router.post("/authenticate", authenticateAppController, validateBody(authenticat
 router.post("/refresh", authenticateAppController, validateBody(refreshSchema), refreshController);
 router.post("/verify", validateBody(verifyCodeSchema), verifiyController);
 
-router.patch("/change-password", validateBody(changePasswordSchema), changePasswordController);
+router.patch("/change-password", authenticateMiddleware, validateBody(changePasswordSchema), changePasswordController);
 //router.post("/verify-email", validateBody(verifiyEmailSchema), verifiyEmailController);
 export default router;
