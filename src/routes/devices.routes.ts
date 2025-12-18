@@ -14,16 +14,82 @@ import {
   deviceDeleteController,
 } from "../controllers/device.controller";
 import { authenticateAppController, authenticateMiddleware } from "../controllers/auth.controller";
+import { rateLimiter } from "../middlewares/rateLimiter";
 
 const router = Router();
 
-router.post("/", authenticateAppController, validateBody(createDeviceSchema), deviceCreateController);
+router.post(
+  "/",
+  rateLimiter({
+    windowSeconds: 60,
+    maxRequests: 10,
+  }),
+  authenticateAppController,
+  validateBody(createDeviceSchema),
+  deviceCreateController
+);
 
-router.get("/", authenticateAppController, validateQuery(deviceFilterSchema), deviceListController); //admin only
-router.get("/:id", authenticateMiddleware, validateParams(deviceIdParam), deviceGetController);
+/**
+ * List devices (admin / app-level)
+ */
+router.get(
+  "/",
+  rateLimiter({
+    windowSeconds: 60,
+    maxRequests: 30,
+  }),
+  authenticateAppController,
+  validateQuery(deviceFilterSchema),
+  deviceListController
+);
 
-router.put("/:id", authenticateMiddleware, validateParams(deviceIdParam), validateBody(updateDeviceSchema), deviceUpdateController);
+/**
+ * Get device by ID (user-level)
+ */
+router.get(
+  "/:id",
+  authenticateMiddleware,
+  rateLimiter({
+    windowSeconds: 60,
+    maxRequests: 120,
+    keyGenerator: (req) =>
+      `user:${req.headers["x-user-id"]}:device:${req.headers["x-device-id"]}`,
+  }),
+  validateParams(deviceIdParam),
+  deviceGetController
+);
 
-router.delete("/", authenticateMiddleware, validateQuery(deviceFilterSchema), deviceDeleteController);
+/**
+ * Update device (user-level, sensitive)
+ */
+router.put(
+  "/:id",
+  authenticateMiddleware,
+  rateLimiter({
+    windowSeconds: 60,
+    maxRequests: 20,
+    keyGenerator: (req) =>
+      `user:${req.headers["x-user-id"]}:device:${req.headers["x-device-id"]}`,
+  }),
+  validateParams(deviceIdParam),
+  validateBody(updateDeviceSchema),
+  deviceUpdateController
+);
+
+/**
+ * Delete devices (VERY sensitive)
+ */
+router.delete(
+  "/",
+  authenticateMiddleware,
+  rateLimiter({
+    windowSeconds: 300,
+    maxRequests: 3,
+    keyGenerator: (req) =>
+      `user:${req.headers["x-user-id"]}:device:${req.headers["x-device-id"]}`,
+  }),
+  validateQuery(deviceFilterSchema),
+  deviceDeleteController
+);
 
 export default router;
