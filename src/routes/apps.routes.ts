@@ -67,6 +67,7 @@ router.get(
   rateLimiter({
     windowSeconds: 60,
     maxRequests: 120,
+    keyGenerator: (req) => `user:${req.ip}`
   }),
   authenticateAppController,
   validateParams(appIdParam),

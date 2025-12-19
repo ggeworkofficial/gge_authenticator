@@ -23,6 +23,7 @@ router.post(
   rateLimiter({
     windowSeconds: 60,
     maxRequests: 10,
+    keyGenerator: (req) => `create:devices:${req.ip}`
   }),
   authenticateAppController,
   validateBody(createDeviceSchema),
@@ -37,6 +38,7 @@ router.get(
   rateLimiter({
     windowSeconds: 60,
     maxRequests: 30,
+    keyGenerator: (req) => `get:devices:${req.ip}`
   }),
   authenticateAppController,
   validateQuery(deviceFilterSchema),

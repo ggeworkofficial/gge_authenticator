@@ -16,7 +16,7 @@ const router = Router();
 
 router.post(
   "/login", 
-  rateLimiter({windowSeconds: 60, maxRequests: 5}),
+  rateLimiter({windowSeconds: 60, maxRequests: 5, keyGenerator: (req) => `login:${req.ip}`}),
   authenticateAppController, 
   validateBody(loginSchema), 
   loginController
@@ -24,7 +24,7 @@ router.post(
 
 router.post(
   "/register",
-  rateLimiter({ windowSeconds: 60, maxRequests: 3 }),
+  rateLimiter({ windowSeconds: 60, maxRequests: 3, keyGenerator: (req) => `register:${req.ip}` }),
   authenticateAppController,
   validateBody(registerSchema),
   registerController
@@ -32,7 +32,7 @@ router.post(
 
 router.post(
   "/authenticate",
-  rateLimiter({ windowSeconds: 60, maxRequests: 10 }),
+  rateLimiter({ windowSeconds: 60, maxRequests: 10, keyGenerator: (req) => `authenticate:${req.ip}` }),
   authenticateAppController,
   validateBody(authenticateSchema),
   authenticateEndpoint
@@ -40,7 +40,7 @@ router.post(
 
 router.post(
   "/refresh",
-  rateLimiter({ windowSeconds: 60, maxRequests: 20 }),
+  rateLimiter({ windowSeconds: 60, maxRequests: 20, keyGenerator: (req) => `refresh:${req.ip}` }),
   authenticateAppController,
   validateBody(refreshSchema),
   refreshController
@@ -48,14 +48,14 @@ router.post(
 
 router.post(
   "/verify",
-  rateLimiter({ windowSeconds: 60, maxRequests: 3 }),
+  rateLimiter({ windowSeconds: 60, maxRequests: 5, keyGenerator: (req) => `verify:${req.ip}` }),
   validateBody(verifyCodeSchema),
   verifiyController
 );
 
 router.patch(
   "/change-password",
-  rateLimiter({ windowSeconds: 60, maxRequests: 2 }),
+  rateLimiter({ windowSeconds: 60, maxRequests: 2, keyGenerator: (req) => `change-password:${req.ip}` }),
   authenticateMiddleware,
   validateBody(changePasswordSchema),
   changePasswordController

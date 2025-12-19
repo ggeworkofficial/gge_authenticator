@@ -24,6 +24,7 @@ router.post(
   rateLimiter({
     windowSeconds: 60,
     maxRequests: 10,
+	keyGenerator: (req) => `session:${req.ip}`
   }),
   authenticateAppController,
   validateBody(createSessionSchema),
