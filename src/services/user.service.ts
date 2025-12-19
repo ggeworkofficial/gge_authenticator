@@ -9,12 +9,13 @@ import {
 } from "../errors/user.error";
 import { User } from "../models/postgres/User";
 import { UserRepository } from "../repositories/user.repository";
+import { PublicUserDTO, UserMapper, UserSelfDTO } from "../DTO/user.dto";
 
 export class UserService {
   private repo = new UserRepository();
   private db = Postgres.getInstance();
 
-  async createUser(userData: Partial<User>): Promise<User> {
+  async createUser(userData: Partial<User>): Promise<UserSelfDTO> {
     const transaction = await this.db.getTransaction();
     try {
       const existing = await this.repo.findByEmail(userData.email as string, transaction);
@@ -25,7 +26,7 @@ export class UserService {
       
       const user = await this.repo.create(userData, transaction);
       await transaction.commit();
-      return user;
+      return UserMapper.toSelf(user);
     } catch (error) {
       await transaction.rollback();
       if (error instanceof UserCreateError) throw error;
@@ -33,14 +34,14 @@ export class UserService {
     }
   }
 
-  async getUserById(id: string): Promise<User> {;
+  async getUserById(id: string): Promise<UserSelfDTO> {;
     const transaction = await this.db.getTransaction();
     try {
       const user = await this.repo.findById(id, transaction);
       if (!user) throw new UserFindError("User not found", { id });
       
       await transaction.commit();
-      return user;
+      return UserMapper.toSelf(user);
     } catch (error) {
       await transaction.rollback();
       if (error instanceof UserFindError) throw error;
@@ -48,26 +49,26 @@ export class UserService {
     }
   }
 
-  async getUsers(filter?: Partial<User>): Promise<User[]> {
+  async getUsers(filter?: Partial<User>): Promise<PublicUserDTO[]> {
     const transaction = await this.db.getTransaction();
     try {
       const users = await this.repo.findAll(filter, transaction);
       await transaction.commit();
-      return users;
+      return UserMapper.toPublicList(users);
     } catch (error) {
       await transaction.rollback();
       throw new UserListError("Failed to list users", { filter, cause: error });
     }
   }
 
-  async updateUser(id: string, data: Partial<User>): Promise<User> {
+  async updateUser(id: string, data: Partial<User>): Promise<UserSelfDTO> {
     const transaction = await this.db.getTransaction();
     try {
       const updated = await this.repo.update(id, data, transaction);
       if (!updated) throw new UserUpdateError("User not found", { id });
       
       await transaction.commit();
-      return updated;
+      return UserMapper.toSelf(updated);
     } catch (error) {
       await transaction.rollback();
       if (error instanceof UserUpdateError) throw error;
