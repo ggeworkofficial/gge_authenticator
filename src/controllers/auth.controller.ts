@@ -3,7 +3,7 @@ import axios, { head } from "axios";
 import { AuthService } from "../services/auth.service";
 import { MainError } from "../errors/main.error";
 import { Logger } from "../utils/logger";
-import { AccessTokenExpiredError, AuthError } from "../errors/auth.error";
+import { AccessTokenExpiredError, AuthError, NotAdminError } from "../errors/auth.error";
 
 const logger = Logger.getLogger();
 
@@ -242,7 +242,8 @@ export const registerController = async (req: Request, res: Response, next: Next
       headers = await returnInternalSigniture(null, 'POST', '/auth/login', loginPayload);
       const loginResp = await axios.post(`${base}/auth/login`, loginPayload, {headers});
 
-      return res.status(loginResp.status || 200).json(loginResp.data);
+      const codeChallanger = await returnCodeChallange(null, loginResp.data, code_challange);
+      return res.status(loginResp.status || 200).json(codeChallanger ?? loginResp.data);
     } catch (err: any) {
       const apiError = err?.response?.data;
       if (apiError?.errorType) {
@@ -409,7 +410,6 @@ export const authenticateAppController = async (
 ) => {
   try {
     const payload = getAuthAppPayload(req);
-
     // PKCE → just attach and move on
     if (payload.type === "pkce") {
       req.auth = {
@@ -617,6 +617,33 @@ export const verifiyController = async (req: Request, res: Response, next: NextF
     return res.status(200).json(result);
   } catch (err) {
     console.log(err);
+    next(err);
+  }
+};
+
+export const isAdminMiddleware = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    // Caller identity should be populated by authenticateMiddleware earlier
+    const callerId = (req as any).auth?.user_id || (req.headers['x-user-id'] as string);
+    if (!callerId) return next(new MainError('Missing caller user id', 400));
+
+    const service = new AuthService();
+    const isAdmin = await service.isUserAdmin(callerId);
+    if (!isAdmin) throw new NotAdminError("User is not admin");
+
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const isAdminController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const params = req.params as any;
+    const service = new AuthService();
+    const result = await service.isUserAdmin(params.id);
+    res.status(200).json({ is_admin: !!result });
+  } catch (err) {
     next(err);
   }
 };

@@ -33,6 +33,15 @@ export class AuthService {
     private authRepo = new AuthRepository();
     private appRepo = new AppRepository();
 
+    public async isUserAdmin(userId: string): Promise<boolean> {
+        try {
+            const flag = await this.authRepo.isUserAdmin(userId);
+            return !!flag;
+        } catch (err) {
+            throw new AuthError("Could not determine admin status", { userId, cause: err });
+        }
+    }
+
     private ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
     private REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
     private ACCESS_TTL = Number(process.env.ACCESS_TOKEN_TTL) || 900;

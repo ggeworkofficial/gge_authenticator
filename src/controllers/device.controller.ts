@@ -10,7 +10,7 @@ export const deviceCreateController = async (req: Request, res: Response, next: 
     const service = new DeviceService();
     const device = await service.createDevice(data);
     const codeChallangeSecret = await returnCodeChallange(null, device, code_challange);
-    res.status(201).json(codeChallangeSecret ?? device );
+    res.status(201).json({device: codeChallangeSecret ?? device});
   } catch (error) {
     next(error);
   }

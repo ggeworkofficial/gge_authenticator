@@ -73,3 +73,10 @@ export class RefreshTokenError extends MainError {
         this.name = "RefreshTokenNotFoundError";
   }
 }
+
+export class NotAdminError extends MainError {
+  constructor(message = "User is not an admin", details?: any) {
+    super(message, 403, details);
+    this.name = "NotAdminError";
+  }
+}
