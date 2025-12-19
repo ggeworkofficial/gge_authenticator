@@ -12,6 +12,7 @@ import { App } from "../models/postgres/App";
 import { AppRepository } from "../repositories/app.repository";
 import { UserApp } from "../models/postgres/UserApp";
 import { UserRepository } from "../repositories/user.repository";
+import { AppDTO, AppMapper } from "../DTO/app.dto";
 
 
 export class AppService {
@@ -19,7 +20,7 @@ export class AppService {
     private userRepo = new UserRepository();
     private db = Postgres.getInstance();
 
-    async createApp(appData: App): Promise<App> {
+    async createApp(appData: App): Promise<AppDTO> {
         const transaction = await this.db.getTransaction();
         try {
             const existingApp = await this.appRepo.findByName(appData.name!, transaction);
@@ -27,7 +28,7 @@ export class AppService {
 
             const app = await this.appRepo.create(appData, transaction);
             await transaction.commit();
-            return app;
+            return AppMapper.toAll(app);
         } catch (error) {
             await transaction.rollback();
             if (error instanceof AppCreateError) throw error;
@@ -57,13 +58,13 @@ export class AppService {
         }
     }
 
-    async getAppById(id: string): Promise<App> {
+    async getAppById(id: string): Promise<AppDTO> {
         const transaction = await this.db.getTransaction();
         try {
             const app = await this.appRepo.findById(id, transaction);
             if (!app) throw new AppFindError("App not found", { id });
             await transaction.commit();
-            return app;
+            return AppMapper.toAll(app);
         } catch (error) {
             await transaction.rollback();
             if (error instanceof AppFindError) throw error;
@@ -71,25 +72,25 @@ export class AppService {
         }
     }
 
-    async getApps(filter?: Partial<App>): Promise<App[]> {
+    async getApps(filter?: Partial<App>): Promise<AppDTO[]> {
         const transaction = await this.db.getTransaction();
         try {
             const apps = await this.appRepo.findAll(filter, transaction);
             await transaction.commit();
-            return apps;
+            return AppMapper.toAllList(apps);
         } catch (error) {
             await transaction.rollback();
             throw new AppListError("Failed to list apps", { filter, cause: error });
         }
     }
 
-    async updateApp(id: string, data: Partial<App>): Promise<App> {
+    async updateApp(id: string, data: Partial<App>): Promise<AppDTO> {
         const transaction = await this.db.getTransaction();
         try {
             const updated = await this.appRepo.update(id, data, transaction);
             if (!updated) throw new AppUpdateError("App not found", { id });
             await transaction.commit();
-            return updated;
+            return AppMapper.toAll(updated);
         } catch (error) {
             await transaction.rollback();
             if (error instanceof AppUpdateError) throw error;
@@ -111,7 +112,7 @@ export class AppService {
         }
     }
 
-    async changeAppSecret(params: {id: string, old_hashed_secret: string, new_hashed_secret: string}): Promise<App> {
+    async changeAppSecret(params: {id: string, old_hashed_secret: string, new_hashed_secret: string}): Promise<AppDTO> {
         const transaction = await this.db.getTransaction();
         try {
             const app = await this.appRepo.findById(params.id, transaction);
@@ -124,7 +125,7 @@ export class AppService {
             const updated = await this.appRepo.update(params.id, { hashed_secret: app.hashed_secret }, transaction);
             
             await transaction.commit();
-            return updated!;
+            return AppMapper.toAll(updated!);
         } catch (error) {
             await transaction.rollback();
             if (error instanceof AppFindError) throw error;
