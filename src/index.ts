@@ -1,10 +1,11 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
-import { errorHandler } from "./middlewares/errorHandler";
+import { errorHandler, notFound } from "./middlewares/errorHandler";
 import "reflect-metadata";
 import { Logger } from "./utils/logger";
 import { MongoDB } from "./connections/mongodb";
+import { RedisClient } from "./connections/redis";
 
 const mongodb = MongoDB.getInstance();
 
@@ -13,6 +14,7 @@ const logger = Logger.getLogger();
 dotenv.config();
 async function start() {
   await mongodb.connect();
+  RedisClient.getInstance();
 
   const app = express();
   app.use(express.json());
@@ -29,6 +31,7 @@ async function start() {
   app.use("/apps", appRoutes);
   app.use("/sessions", sessionRoutes);
   app.use("/devices", deviceRoutes);
+  app.use(notFound);
   app.use(errorHandler);
 
   const PORT = process.env.PORT;

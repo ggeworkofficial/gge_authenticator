@@ -33,6 +33,10 @@ export class App extends Model<App> {
   @Column({ type: DataType.STRING(150) })
   display_name!: string;
 
+  @AllowNull(false)
+  @Column({ type: DataType.STRING })
+  hashed_secret!: string;
+
   @AllowNull(true)
   @Column({ type: DataType.TEXT })
   description?: string;

@@ -60,6 +60,13 @@ export class RefreshTokenNotFoundError extends MainError {
   }
 }
 
+export class RefreshTokenReplayError extends MainError {
+  constructor(message = "Refresh token not found", details?: any) {
+    super(message, 404, details);
+    this.name = "RefreshTokenNotFoundError";
+  }
+}
+
 export class RefreshTokenError extends MainError {
     constructor(message = "Refresh token not found", details?: any) {
         super(message, 404, details);

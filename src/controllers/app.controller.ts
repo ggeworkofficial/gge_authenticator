@@ -1,10 +1,13 @@
 import { NextFunction, Request, Response } from "express";
 import { AppService } from "../services/app.service";
 import { UserApp } from "../models/postgres/UserApp";
+import { returnCodeChallange } from "./auth.controller";
+import { AuthError } from "../errors/auth.error";
 
 
 export const appCreateController = async (req: Request, res: Response, next: NextFunction) => {
     const appData = req.body;
+    if (!req.auth) throw new AuthError("Authentication was not provided", 401);
     try {
         const appService = new AppService();
         const newApp = await appService.createApp(appData);
@@ -16,6 +19,7 @@ export const appCreateController = async (req: Request, res: Response, next: Nex
 
 export const appListController = async (req: Request, res: Response, next: NextFunction) => {
     const filter = req.query || {};
+    if (!req.auth) throw new AuthError("Authentication was not provided", 401);
     try {
         const appService = new AppService();
         const apps = await appService.getApps(filter as any);
@@ -27,10 +31,12 @@ export const appListController = async (req: Request, res: Response, next: NextF
 
 export const appGetController = async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
+    const code_challange = req.auth?.code_challenger;
     try {
         const appService = new AppService();
         const app = await appService.getAppById(id);
-        res.status(200).json({ app });
+        const codeChallangeSecret = await returnCodeChallange(null, app, code_challange);
+        res.status(200).json({app: codeChallangeSecret ?? app});
     } catch (error) {
         next(error);
     }
@@ -39,6 +45,7 @@ export const appGetController = async (req: Request, res: Response, next: NextFu
 export const appUpdateController = async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
     const data = req.body;
+    if (!req.auth) throw new AuthError("Authentication was not provided", 401);
     try {
         const appService = new AppService();
         const updated = await appService.updateApp(id, data);
@@ -50,6 +57,7 @@ export const appUpdateController = async (req: Request, res: Response, next: Nex
 
 export const appDeleteController = async (req: Request, res: Response, next: NextFunction) => {
     const { id } = req.params;
+    if (!req.auth) throw new AuthError("Authentication was not provided", 401);
     try {
         const appService = new AppService();
         await appService.deleteApp(id);
@@ -61,11 +69,25 @@ export const appDeleteController = async (req: Request, res: Response, next: Nex
 
 export const appCreateUserController = async (req: Request, res: Response, next: NextFunction) => {
     const { user_id, app_id } = req.body;
+    if (!req.auth) throw new AuthError("Authentication was not provided", 401);
     try {
         const appService = new AppService();
         const userApp: UserApp = await appService.createUserApp(user_id, app_id);
         res.status(201).json({ userApp });
     } catch (error) {
+        next(error);
+    }
+};
+
+export const changeAppSecretController = async (req: Request, res: Response, next: NextFunction) => {
+    const payload = req.body;
+    if (!req.auth) throw new AuthError("Authentication was not provided", 401);
+    try {
+        const appService = new AppService();
+        const apps = await appService.changeAppSecret(payload);
+        res.status(200).json(apps);
+    }
+    catch (error) {
         next(error);
     }
 };

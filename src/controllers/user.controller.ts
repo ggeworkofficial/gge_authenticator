@@ -1,12 +1,19 @@
 import { NextFunction, Request, Response } from "express";
 import { UserService } from "../services/user.service";
+import { returnCodeChallange } from "./auth.controller";
+import { AuthError } from "../errors/auth.error";
 
 export const userCreateController = async (req: Request, res: Response, next: NextFunction) => {
   const userData = req.body;
+
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
+
+  const code_challange = req.auth?.code_challenger;
   try {
     const service = new UserService();
     const user = await service.createUser(userData);
-    res.status(201).json({ user });
+    const codeChallangeSecret = await returnCodeChallange(null, user, code_challange);
+    res.status(201).json(codeChallangeSecret ?? user);
   } catch (error) {
     next(error);
   }
@@ -14,6 +21,9 @@ export const userCreateController = async (req: Request, res: Response, next: Ne
 
 export const userListController = async (req: Request, res: Response, next: NextFunction) => {
   const filter = req.query || {};
+
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
+  
   try {
     const service = new UserService();
     const users = await service.getUsers(filter as any);
@@ -25,6 +35,8 @@ export const userListController = async (req: Request, res: Response, next: Next
 
 export const userGetController = async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
+
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
     const service = new UserService();
     const user = await service.getUserById(id);
@@ -37,6 +49,8 @@ export const userGetController = async (req: Request, res: Response, next: NextF
 export const userUpdateController = async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const data = req.body;
+
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
     const service = new UserService();
     const updated = await service.updateUser(id, data);
@@ -48,6 +62,8 @@ export const userUpdateController = async (req: Request, res: Response, next: Ne
 
 export const userDeleteController = async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
+
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
     const service = new UserService();
     await service.deleteUser(id);

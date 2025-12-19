@@ -1,12 +1,16 @@
 import { NextFunction, Request, Response } from "express";
 import { DeviceService } from "../services/device.service";
+import { returnCodeChallange } from "./auth.controller";
+import { AuthError } from "../errors/auth.error";
 
 export const deviceCreateController = async (req: Request, res: Response, next: NextFunction) => {
   const data = req.body;
+  const code_challange = req.auth?.code_challenger;
   try {
     const service = new DeviceService();
     const device = await service.createDevice(data);
-    res.status(201).json({ device });
+    const codeChallangeSecret = await returnCodeChallange(null, device, code_challange);
+    res.status(201).json(codeChallangeSecret ?? device );
   } catch (error) {
     next(error);
   }
@@ -14,10 +18,13 @@ export const deviceCreateController = async (req: Request, res: Response, next: 
 
 export const deviceListController = async (req: Request, res: Response, next: NextFunction) => {
   const filter = req.query as any;
+  const code_challange = req.auth?.code_challenger;
   try {
+    
     const service = new DeviceService();
     const devices = await service.getDevices({ device_id: filter.device_id, user_id: filter.user_id });
-    res.status(200).json({ devices });
+    const codeChallanger = await returnCodeChallange(null, devices, code_challange);
+    res.status(200).json({devices: codeChallanger ?? devices});
   } catch (error) {
     next(error);
   }
@@ -25,6 +32,7 @@ export const deviceListController = async (req: Request, res: Response, next: Ne
 
 export const deviceGetController = async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
     const service = new DeviceService();
     const device = await service.getDeviceById(id);
@@ -37,6 +45,7 @@ export const deviceGetController = async (req: Request, res: Response, next: Nex
 export const deviceUpdateController = async (req: Request, res: Response, next: NextFunction) => {
   const { id } = req.params;
   const data = req.body;
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
     const service = new DeviceService();
     const updated = await service.updateDevice(id, data);
@@ -48,6 +57,7 @@ export const deviceUpdateController = async (req: Request, res: Response, next: 
 
 export const deviceDeleteController = async (req: Request, res: Response, next: NextFunction) => {
   const filter = req.query as any;
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
     const service = new DeviceService();
     const deletedCount = await service.deleteByFilter({ device_id: filter.device_id, user_id: filter.user_id });

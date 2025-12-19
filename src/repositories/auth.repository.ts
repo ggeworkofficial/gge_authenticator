@@ -2,9 +2,11 @@ import { UserRepository } from "./user.repository";
 import { User } from "../models/postgres/User";
 import { Transaction } from "sequelize";
 import { Token } from "../models/mongodb/TokenDocument";
+import { RedisClient } from "../connections/redis";
 
 export class AuthRepository {
   private userRepo = new UserRepository();
+  private redis = RedisClient.getInstance();
 
   public async findUserByEmail(email: string, transaction?: Transaction): Promise<User | null> {
     return this.userRepo.findByEmail(email, transaction);
@@ -36,5 +38,38 @@ export class AuthRepository {
     const update = { $set: { accessToken, accessTokenExpiresAt: accessExpiresAt } } as any;
     const res = await Token.updateOne(filter, update as any);
     return res;
+  }
+
+  public rotateRefreshToken(
+    userId: string,
+    deviceId: string,
+    appId: string,
+    oldRefreshToken: string,
+    newRefreshToken: string,
+    refreshExpiresAt: Date
+  ) {
+    return Token.updateOne(
+      {
+        userId,
+        deviceId,
+        appId,
+        refreshToken: oldRefreshToken
+      },
+      {
+        $set: {
+          refreshToken: newRefreshToken,
+          refreshTokenExpiresAt: refreshExpiresAt
+        }
+      }
+    );
+  }
+
+
+  public async storeCodeChallange(key: string, data: {code_challange: string, response: any}): Promise<void> {
+    await this.redis.set(key, JSON.stringify(data), "EX", 300);
+  }
+
+  public async findCodeChallange(key: string): Promise<string> {
+    return await this.redis.get(key) as string;
   }
 }
