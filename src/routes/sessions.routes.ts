@@ -15,17 +15,88 @@ import {
 	deleteSessionByIdController,
 } from "../controllers/sessions.controller";
 import { authenticateAppController, authenticateMiddleware } from "../controllers/auth.controller";
+import { rateLimiter } from "../middlewares/rateLimiter";
 
 const router = Router();
 
-router.post("/", authenticateAppController, validateBody(createSessionSchema), createSessionController);
+router.post(
+  "/",
+  rateLimiter({
+    windowSeconds: 60,
+    maxRequests: 10,
+  }),
+  authenticateAppController,
+  validateBody(createSessionSchema),
+  createSessionController
+);
 
-router.get("/", authenticateMiddleware, validateQuery(sessionFilterSchema), listSessionsController); //admin
-router.get("/:id", authenticateMiddleware, validateParams(sessionIdParam), getSessionController);
+/**
+ * List sessions (admin)
+ */
+router.get(
+  "/",
+  authenticateMiddleware,
+  rateLimiter({
+    windowSeconds: 60,
+    maxRequests: 30,
+    keyGenerator: (req) =>
+      `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
+  }),
+  validateQuery(sessionFilterSchema),
+  listSessionsController
+);
 
-router.put("/:id", authenticateMiddleware, validateParams(sessionIdParam), validateBody(updateSessionSchema), updateSessionController);
+router.get(
+  "/:id",
+  authenticateMiddleware,
+  rateLimiter({
+    windowSeconds: 60,
+    maxRequests: 60,
+    keyGenerator: (req) =>
+      `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
+  }),
+  validateParams(sessionIdParam),
+  getSessionController
+);
 
-router.delete("/", authenticateMiddleware, validateQuery(sessionFilterSchema), deleteSessionsController);
-router.delete("/:id", authenticateMiddleware, validateParams(sessionIdParam), deleteSessionByIdController);
+router.put(
+  "/:id",
+  authenticateMiddleware,
+  rateLimiter({
+    windowSeconds: 60,
+    maxRequests: 20,
+    keyGenerator: (req) =>
+      `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
+  }),
+  validateParams(sessionIdParam),
+  validateBody(updateSessionSchema),
+  updateSessionController
+);
+
+router.delete(
+  "/",
+  authenticateMiddleware,
+  rateLimiter({
+    windowSeconds: 300,
+    maxRequests: 3,
+    keyGenerator: (req) =>
+      `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
+  }),
+  validateQuery(sessionFilterSchema),
+  deleteSessionsController
+);
+
+router.delete(
+  "/:id",
+  authenticateMiddleware,
+  rateLimiter({
+    windowSeconds: 300,
+    maxRequests: 5,
+    keyGenerator: (req) =>
+      `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
+  }),
+  validateParams(sessionIdParam),
+  deleteSessionByIdController
+);
 
 export default router;
