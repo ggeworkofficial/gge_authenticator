@@ -21,6 +21,7 @@ import {
 import dotenv from "dotenv";
 import { AppRepository } from "../repositories/app.repository";
 import { AppFindError, IncorrectAppSecretError } from "../errors/app.error";
+import { SessionNotFoundError } from "../errors/session.error";
 
 dotenv.config();
 
@@ -118,13 +119,21 @@ export class AuthService {
         }
     }
 
-    public async authenticate(accessToken: string, userId: string, appId: string, deviceId: string) {
+    public async authenticate(accessToken: string) {
         try {
-            const session = await this.authRepo.findSessionByUserDevice(userId, deviceId, appId);
-            if (!session) throw new UserNotFoundError("User not found", { userId, deviceId, appId });
-
             const decoded = jwt.verify(accessToken, this.ACCESS_SECRET) as any;
-            return decoded;
+
+            const { sub, app, device, type } = decoded;
+            if (type !== "access") throw new AccessTokenError("Invalid token type");
+
+            const session = await this.authRepo.findSessionByUserDevice(sub, device, app);
+            if (!session) throw new SessionNotFoundError("Session not found");
+
+            return {
+                user_id: sub,
+                app_id: app,
+                device_id: device,
+            };
         } catch (err: any) {
             if (err && err.name === "TokenExpiredError") throw new AccessTokenExpiredError("Access token expired", { cause: err });
             if (err && err.name === "JsonWebTokenError") throw new AccessTokenError("Access token invalid", { cause: err });
@@ -134,17 +143,11 @@ export class AuthService {
 
     public async refreshAccessToken(params: {
         refresh_token: string;
-        user_id: string;
-        device_id: string;
-        app_id: string;
         accessTtl?: number;
         refreshTtl?: number;
         }) {
         const {
             refresh_token,
-            user_id,
-            device_id,
-            app_id,
             accessTtl,
             refreshTtl
         } = params;
@@ -152,90 +155,88 @@ export class AuthService {
         let session;
         try {
             session = await this.authRepo.findSessionByRefreshToken(refresh_token);
-            if (!session) {
-            throw new RefreshTokenNotFoundError("Refresh token session not found", {
-                user_id,
-                device_id,
-                app_id,
-            });
+            if (!session) throw new RefreshTokenNotFoundError("Refresh token session not found", {});
+            
+            const decoded = jwt.verify(refresh_token, this.REFRESH_SECRET) as any;
+            const { sub, app, device, type } = decoded;
+
+            if (type !== "access") throw new AccessTokenError("Invalid token type");
+            if (
+                decoded.sub !== sub ||
+                decoded.device !== device ||
+                decoded.app !== app ||
+                decoded.type !== "refresh"
+            ) {
+                throw new AuthError("Refresh token mismatch");
+            }
+            const now = Math.floor(Date.now() / 1000);
+
+            // TTLs
+            const accessTTL =
+                typeof accessTtl === "number" && !isNaN(accessTtl)
+                ? accessTtl
+                : this.ACCESS_TTL;
+
+            const refreshTTL =
+                typeof refreshTtl === "number" && !isNaN(refreshTtl)
+                ? refreshTtl
+                : this.REFRESH_TTL;
+
+            // Generate new tokens
+            const accessExp = now + accessTTL;
+            const refreshExp = now + refreshTTL;
+
+            const newAccessToken = jwt.sign(
+                { sub: sub, app: app, device: device, type: "access" },
+                this.ACCESS_SECRET,
+                { expiresIn: accessTTL }
+            );
+
+            const newRefreshToken = jwt.sign(
+                { sub: sub, app: app, device: device, type: "refresh" },
+                this.REFRESH_SECRET,
+                { expiresIn: refreshTTL }
+            );
+
+            const accessTokenExpiresAt = new Date(accessExp * 1000);
+            const refreshTokenExpiresAt = new Date(refreshExp * 1000);
+            const rotateResult = await this.authRepo.rotateRefreshToken(
+                sub,
+                device,
+                app,
+                refresh_token,
+                newRefreshToken,
+                refreshTokenExpiresAt
+            );
+
+            if (rotateResult.matchedCount === 0) {
+                throw new RefreshTokenReplayError("Refresh token replay detected");
             }
 
-            jwt.verify(refresh_token, this.REFRESH_SECRET);
+            // Update access token
+            await this.authRepo.updateAccessTokenForSession(
+                sub,
+                device,
+                app,
+                newAccessToken,
+                accessTokenExpiresAt
+            );
+
+            return {
+                user_id: sub,
+                device_id: device,
+                app_id: app,
+                access_token: newAccessToken,
+                access_token_expires_at: accessTokenExpiresAt,
+                refresh_token: newRefreshToken,
+                refresh_token_expires_at: refreshTokenExpiresAt,
+            };
         } catch (err: any) {
-            if (err?.name === "TokenExpiredError") {
-            throw new RefreshTokenExpiredError("Refresh token expired", {
-                user_id,
-                device_id,
-                app_id,
-            });
-            }
+            if (err?.name === "TokenExpiredError") throw new RefreshTokenExpiredError("Refresh token expired");
             throw err;
         }
 
-        const now = Math.floor(Date.now() / 1000);
-
-        // TTLs
-        const accessTTL =
-            typeof accessTtl === "number" && !isNaN(accessTtl)
-            ? accessTtl
-            : this.ACCESS_TTL;
-
-        const refreshTTL =
-            typeof refreshTtl === "number" && !isNaN(refreshTtl)
-            ? refreshTtl
-            : this.REFRESH_TTL;
-
-        // Generate new tokens
-        const accessExp = now + accessTTL;
-        const refreshExp = now + refreshTTL;
-
-        const newAccessToken = jwt.sign(
-            { sub: user_id, app: app_id, device: device_id, type: "access" },
-            this.ACCESS_SECRET,
-            { expiresIn: accessTTL }
-        );
-
-        const newRefreshToken = jwt.sign(
-            { sub: user_id, app: app_id, device: device_id, type: "refresh" },
-            this.REFRESH_SECRET,
-            { expiresIn: refreshTTL }
-        );
-
-        const accessTokenExpiresAt = new Date(accessExp * 1000);
-        const refreshTokenExpiresAt = new Date(refreshExp * 1000);
-        const rotateResult = await this.authRepo.rotateRefreshToken(
-            user_id,
-            device_id,
-            app_id,
-            refresh_token,
-            newRefreshToken,
-            refreshTokenExpiresAt
-        );
-
-        if (rotateResult.matchedCount === 0) {
-            throw new RefreshTokenReplayError("Refresh token replay detected", {
-                user_id,
-                device_id,
-                app_id,
-            });
-        }
-
-        // Update access token
-        await this.authRepo.updateAccessTokenForSession(
-            user_id,
-            device_id,
-            app_id,
-            newAccessToken,
-            accessTokenExpiresAt
-        );
-
-        return {
-            access_token: newAccessToken,
-            access_token_expires_at: accessTokenExpiresAt,
-            refresh_token: newRefreshToken,
-            refresh_token_expires_at: refreshTokenExpiresAt,
-        };
-        }
+    }
 
 
     async changePassword(params: { user_id: string; old_password_hash: string; new_password_hash: string }): Promise<User> {
