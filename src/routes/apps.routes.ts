@@ -21,7 +21,7 @@ import {
   appCreateUserController, 
   changeAppSecretController
 } from "../controllers/app.controller";
-import { authenticateAppController, authenticateMiddleware } from "../controllers/auth.controller";
+import { authenticateAppController, authenticateMiddleware, isAdminMiddleware } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 
 const router = Router();
@@ -29,6 +29,7 @@ const router = Router();
 router.post(
   "/",
   authenticateMiddleware,
+  isAdminMiddleware,
   rateLimiter({
     windowSeconds: 60,
     maxRequests: 5,
@@ -77,6 +78,7 @@ router.get(
 router.put(
   "/:id",
   authenticateMiddleware,
+  isAdminMiddleware,
   rateLimiter({
     windowSeconds: 60,
     maxRequests: 10,
@@ -90,6 +92,7 @@ router.put(
 router.patch(
   "/change-secret",
   authenticateMiddleware,
+  isAdminMiddleware,
   rateLimiter({
     windowSeconds: 300,
     maxRequests: 3,
@@ -102,6 +105,7 @@ router.patch(
 router.delete(
   "/:id",
   authenticateMiddleware,
+  isAdminMiddleware,
   rateLimiter({
     windowSeconds: 300,
     maxRequests: 2,

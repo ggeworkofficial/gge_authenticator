@@ -55,3 +55,7 @@ export const verifyCodeSchema = Joi.object({
     secret_key: Joi.string().required(),
     code_verifier: Joi.string().required(),
 });
+
+export const authIdParamSchema = Joi.object({
+    id: Joi.string().uuid().required(),
+});

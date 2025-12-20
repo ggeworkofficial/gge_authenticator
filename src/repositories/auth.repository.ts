@@ -40,6 +40,12 @@ export class AuthRepository {
     return res;
   }
 
+  public async isUserAdmin(userId: string): Promise<boolean> {
+    const u = await User.findOne({ where: { id: userId }, attributes: ["is_admin"] as any }) as any;
+    if (!u) return false;
+    return !!u.get ? !!u.get("is_admin") : !!u.is_admin;
+  }
+
   public rotateRefreshToken(
     userId: string,
     deviceId: string,

@@ -14,7 +14,7 @@ import {
 	deleteSessionsController,
 	deleteSessionByIdController,
 } from "../controllers/sessions.controller";
-import { authenticateAppController, authenticateMiddleware } from "../controllers/auth.controller";
+import { authenticateAppController, authenticateMiddleware, isAdminMiddleware } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 
 const router = Router();
@@ -63,6 +63,7 @@ router.get(
 router.put(
   "/:id",
   authenticateMiddleware,
+  isAdminMiddleware,
   rateLimiter({
     windowSeconds: 60,
     maxRequests: 20,

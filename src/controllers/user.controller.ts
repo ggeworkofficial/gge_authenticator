@@ -6,8 +6,6 @@ import { AuthError } from "../errors/auth.error";
 export const userCreateController = async (req: Request, res: Response, next: NextFunction) => {
   const userData = req.body;
 
-  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
-
   const code_challange = req.auth?.code_challenger;
   try {
     const service = new UserService();
