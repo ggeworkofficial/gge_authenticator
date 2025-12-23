@@ -7,9 +7,7 @@ interface Options {
   checkUser?: boolean;
   checkDevice?: boolean;
   checkApp?: boolean;
-  userIdKey?: string;  
-  deviceIdKey?: string; 
-  appIdKey?: string;  
+  allowPartial?: boolean;
 }
 
 const extractId = (
@@ -48,19 +46,17 @@ export const authorizeIdentity =
       const requestedDeviceId = extractId(req, ["device_id", "id"]);
       const requestedAppId = extractId(req, ["app_id", "id"]);
 
-      if (options.checkUser && !requestedUserId) {
+      if (options.checkUser && !requestedUserId && !options.allowPartial) {
         throw new AuthError("Missing user id in request", 400);
       }
 
-      if (options.checkDevice && !requestedDeviceId) {
+      if (options.checkDevice && !requestedDeviceId && !options.allowPartial) {
         throw new AuthError("Missing device id in request", 400);
       }
 
-      if (options.checkApp && !requestedAppId) {
+      if (options.checkApp && !requestedAppId && !options.allowPartial) {
         throw new AuthError("Missing app id in request", 400);
       }
-
-
 
       // 🔐 Admin override
       if (options.allowAdmin) {
