@@ -30,8 +30,7 @@ export const createUserAppSchema = Joi.object({
 
 export const appIdParam = Joi.object({
   id: Joi.string().uuid(),
-  name: Joi.string().max(100),
-}).xor("id", "name");
+});
 
 export const changeAppsSecretSchema = Joi.object({
   id: Joi.string().uuid().required(),
