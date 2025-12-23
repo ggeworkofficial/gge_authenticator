@@ -11,7 +11,13 @@ const getBaseUrl = () => process.env.BASE_URL || `http://localhost:${process.env
 
 declare module "express-serve-static-core" {
   interface Request {
-    auth?: AuthPayload
+    auth?: AuthPayload,
+    identity?: {
+        user_id?: string;
+        device_id?: string;
+        app_id?: string;
+        session_id?: string;
+      };
   }
 }
 
@@ -279,6 +285,7 @@ export interface AuthPayload {
   user_id?: string;
   device_id?: string;
   app_id?: string;
+  session_id?: string;
   access_token?: string;
   refresh_token?: string;
   accessTokenTtl?: number;
@@ -312,9 +319,6 @@ const getAuthPayload = (req: Request): AuthPayload => {
   const headers = req.headers;
 
   return {
-    user_id: body.user_id || headers['x-user-id'] as string,
-    device_id: body.device_id || headers['x-device-id'] as string,
-    app_id: body.app_id || headers['x-app-id'] as string,
     access_token: body.access_token || headers['x-access-token'] as string,
     refresh_token: body.refresh_token || headers['x-refresh-token'] as string,
     accessTokenTtl: body.accessTokenTtl || Number(headers['x-access-token-ttl']),
@@ -447,9 +451,6 @@ export const authenticateAppController = async (
 export async function authenticateRequest(params: {
   access_token?: string;
   refresh_token?: string;
-  user_id?: string;
-  device_id?: string;
-  app_id?: string;
   accessTokenTtl?: number;
   refreshTokenTtl?: number;
   baseUrl: string;
@@ -459,9 +460,6 @@ export async function authenticateRequest(params: {
   const {
     access_token,
     refresh_token,
-    user_id,
-    device_id,
-    app_id,
     accessTokenTtl,
     refreshTokenTtl,
     baseUrl,
@@ -470,25 +468,16 @@ export async function authenticateRequest(params: {
 
   try {
     
-    const decoded = await service.authenticate(
+    const identity = await service.authenticate(
       access_token as string,
-      user_id as string,
-      app_id as string,
-      device_id as string
     );
 
-    const exp =
-      (decoded as any)?.exp
-        ? new Date((decoded as any).exp * 1000)
-        : undefined;
+
 
     return {
+      ... identity,
       access_token,
       refresh_token,
-      user_id,
-      device_id,
-      app_id,
-      access_token_expires_at: exp,
       refreshed: false,
     };
   } catch (err) {
@@ -503,9 +492,6 @@ export async function authenticateRequest(params: {
 
     const refreshBody: any = {
       refresh_token,
-      user_id,
-      device_id,
-      app_id,
     };
 
     if (accessTokenTtl !== undefined) {
@@ -514,20 +500,12 @@ export async function authenticateRequest(params: {
 
     const refreshResult = await service.refreshAccessToken({
       refresh_token,
-      user_id: user_id as string,
-      device_id: device_id as string,
-      app_id: app_id as string,
       accessTtl: accessTokenTtl !== undefined ? Number(accessTokenTtl) : undefined,
       refreshTtl: refreshTokenTtl !== undefined ? Number(refreshTokenTtl) : undefined
     });
 
     return {
-      access_token: refreshResult.access_token,
-      refresh_token,
-      user_id,
-      device_id,
-      app_id,
-      access_token_expires_at: refreshResult.access_token_expires_at,
+      ...refreshResult,
       refreshed: true,
     };
   }
@@ -541,10 +519,6 @@ export const authenticateMiddleware = async (
 ) => {
   try {
     const payload = getAuthPayload(req);
-
-    if (!payload.user_id || !payload.device_id || !payload.app_id || !payload.access_token) {
-      throw new MainError("Missing authentication parameters", 400);
-    }
 
     const service = new AuthService();
 
@@ -597,9 +571,6 @@ export const refreshController = async (req: Request, res: Response, next: NextF
     const service = new AuthService();
     const result = await service.refreshAccessToken({
       refresh_token: payload.refresh_token,
-      user_id: payload.user_id,
-      device_id: payload.device_id,
-      app_id: payload.app_id,
       accessTtl: payload.accessTokenTtl ? Number(payload.accessTokenTtl) : undefined,
     });
 

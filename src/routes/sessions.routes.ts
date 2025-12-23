@@ -16,6 +16,7 @@ import {
 } from "../controllers/sessions.controller";
 import { authenticateAppController, authenticateMiddleware, isAdminMiddleware } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
+import { authorizeIdentity } from "../middlewares/identityAuthorizer";
 
 const router = Router();
 
@@ -44,6 +45,13 @@ router.get(
       `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
   }),
   validateQuery(sessionFilterSchema),
+  authorizeIdentity({
+    allowAdmin: true,
+    checkUser: true,
+    checkDevice: true,
+    checkApp: true,
+    allowPartial: true,
+  }),
   listSessionsController
 );
 
@@ -57,6 +65,10 @@ router.get(
       `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
   }),
   validateParams(sessionIdParam),
+  authorizeIdentity({
+    allowAdmin: true,
+    checkSession: true,
+  }),
   getSessionController
 );
 
@@ -84,6 +96,13 @@ router.delete(
     keyGenerator: (req) =>
       `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
   }),
+  authorizeIdentity({
+    allowAdmin: true,
+    checkUser: true,
+    checkDevice: true,
+    checkApp: true,
+    allowPartial: true,
+  }),
   validateQuery(sessionFilterSchema),
   deleteSessionsController
 );
@@ -96,6 +115,10 @@ router.delete(
     maxRequests: 5,
     keyGenerator: (req) =>
       `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
+  }),
+  authorizeIdentity({
+    allowAdmin: true,
+    checkSession: true,
   }),
   validateParams(sessionIdParam),
   deleteSessionByIdController

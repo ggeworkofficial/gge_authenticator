@@ -12,6 +12,7 @@ import {
 import { loginController, registerController, refreshController, verifiyController, authenticateAppController, authenticateEndpoint, authenticateMiddleware, isAdminMiddleware, isAdminController } from "../controllers/auth.controller";
 import { changePasswordController } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
+import { authorizeIdentity } from "../middlewares/identityAuthorizer";
 
 const router = Router();
 
@@ -59,6 +60,9 @@ router.patch(
   rateLimiter({ windowSeconds: 60, maxRequests: 2, keyGenerator: (req) => `change-password:${req.ip}` }),
   authenticateMiddleware,
   validateBody(changePasswordSchema),
+  authorizeIdentity({
+    checkUser: true
+  }),
   changePasswordController
 );
 
@@ -67,7 +71,10 @@ router.get(
   authenticateMiddleware,
   rateLimiter({ windowSeconds: 60, maxRequests: 20, keyGenerator: (req) => `is-admin:user${req.auth?.app_id}device${req.auth?.device_id}app${req.auth?.app_id}` }),
   validateParams(authIdParamSchema),
-  isAdminMiddleware,
+  authorizeIdentity({
+    allowAdmin: true,
+    checkUser: true
+  }),
   isAdminController
 );
 //router.post("/verify-email", validateBody(verifiyEmailSchema), verifiyEmailController);

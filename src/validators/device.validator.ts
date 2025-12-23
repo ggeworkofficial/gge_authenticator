@@ -17,7 +17,10 @@ export const updateDeviceSchema = Joi.object({
 }).min(1);
 
 export const deviceIdParam = Joi.object({
-  id: Joi.string().uuid().required(),
+  // Accept combined param in the form: <user_uuid>-<device_uuid>
+  id: Joi.string()
+    .pattern(/^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}-[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/)
+    .required(),
 });
 
 export const deviceFilterSchema = Joi.object({

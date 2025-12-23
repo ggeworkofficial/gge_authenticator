@@ -34,8 +34,12 @@ export const deviceGetController = async (req: Request, res: Response, next: Nex
   const { id } = req.params;
   if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
+    if (!req.identity?.user_id || !req.identity?.device_id) {
+      throw new AuthError("Device identity not resolved", 500);
+    }
+    
     const service = new DeviceService();
-    const device = await service.getDeviceById(id);
+    const device = await service.getDeviceByUserAndDeviceId(req.identity?.user_id, req.identity?.device_id);
     res.status(200).json({ device });
   } catch (error) {
     next(error);
@@ -43,12 +47,15 @@ export const deviceGetController = async (req: Request, res: Response, next: Nex
 };
 
 export const deviceUpdateController = async (req: Request, res: Response, next: NextFunction) => {
-  const { id } = req.params;
   const data = req.body;
   if (!req.auth) throw new AuthError("Authentication was not provided", 401);
   try {
+    if (!req.identity?.user_id || !req.identity?.device_id) {
+      throw new AuthError("Device identity not resolved", 500);
+    }
+
     const service = new DeviceService();
-    const updated = await service.updateDevice(id, data);
+    const updated = await service.updateDevice(req.identity.user_id, req.identity.device_id, data);
     res.status(200).json({ updated });
   } catch (error) {
     next(error);

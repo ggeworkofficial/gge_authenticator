@@ -23,6 +23,7 @@ import {
 } from "../controllers/app.controller";
 import { authenticateAppController, authenticateMiddleware, isAdminMiddleware } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
+import { authorizeIdentity } from "../middlewares/identityAuthorizer";
 
 const router = Router();
 
@@ -48,6 +49,11 @@ router.post(
     keyGenerator: (req) => `user:${req.headers['x-user-id']}device:${req.headers['x-device-id']}`
   }),
   validateBody(createUserAppSchema),
+  authorizeIdentity({
+    allowAdmin: true,
+    checkApp: true,
+    checkUser: true
+  }),
   appCreateUserController
 );
 
