@@ -15,6 +15,8 @@ import {
 } from "../controllers/device.controller";
 import { authenticateAppController, authenticateMiddleware } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
+import { authorizeIdentity } from "../middlewares/identityAuthorizer";
+import { extractDeviceIdentity } from "../middlewares/deviceIdentityExtractor";
 
 const router = Router();
 
@@ -58,6 +60,12 @@ router.get(
       `user:${req.headers["x-user-id"]}:device:${req.headers["x-device-id"]}`,
   }),
   validateParams(deviceIdParam),
+  extractDeviceIdentity,
+  authorizeIdentity({
+    allowAdmin: true,
+    checkUser: true,
+    checkDevice: true,
+  }),
   deviceGetController
 );
 
@@ -75,6 +83,12 @@ router.put(
   }),
   validateParams(deviceIdParam),
   validateBody(updateDeviceSchema),
+  extractDeviceIdentity,
+  authorizeIdentity({
+    allowAdmin: true,
+    checkUser: true,
+    checkDevice: true,
+  }),
   deviceUpdateController
 );
 
@@ -91,6 +105,12 @@ router.delete(
       `user:${req.headers["x-user-id"]}:device:${req.headers["x-device-id"]}`,
   }),
   validateQuery(deviceFilterSchema),
+  authorizeIdentity({
+    allowAdmin: true,
+    checkUser: true,
+    checkDevice: true,
+    allowPartial: true
+  }),
   deviceDeleteController
 );
 
