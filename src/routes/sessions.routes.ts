@@ -65,6 +65,10 @@ router.get(
       `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
   }),
   validateParams(sessionIdParam),
+  authorizeIdentity({
+    allowAdmin: true,
+    checkSession: true,
+  }),
   getSessionController
 );
 
@@ -111,6 +115,10 @@ router.delete(
     maxRequests: 5,
     keyGenerator: (req) =>
       `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
+  }),
+  authorizeIdentity({
+    allowAdmin: true,
+    checkSession: true,
   }),
   validateParams(sessionIdParam),
   deleteSessionByIdController
