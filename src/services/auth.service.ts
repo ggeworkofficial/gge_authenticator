@@ -128,11 +128,12 @@ export class AuthService {
 
             const session = await this.authRepo.findSessionByUserDevice(sub, device, app);
             if (!session) throw new SessionNotFoundError("Session not found");
-
+            
             return {
                 user_id: sub,
                 app_id: app,
                 device_id: device,
+                session_id: session._id.toString(),
             };
         } catch (err: any) {
             if (err && err.name === "TokenExpiredError") throw new AccessTokenExpiredError("Access token expired", { cause: err });
@@ -226,6 +227,7 @@ export class AuthService {
                 user_id: sub,
                 device_id: device,
                 app_id: app,
+                session_id: session._id.toString(),
                 access_token: newAccessToken,
                 access_token_expires_at: accessTokenExpiresAt,
                 refresh_token: newRefreshToken,

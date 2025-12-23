@@ -279,6 +279,7 @@ export interface AuthPayload {
   user_id?: string;
   device_id?: string;
   app_id?: string;
+  session_id?: string;
   access_token?: string;
   refresh_token?: string;
   accessTokenTtl?: number;
@@ -498,12 +499,7 @@ export async function authenticateRequest(params: {
     });
 
     return {
-      user_id: refreshResult.user_id,
-      device_id: refreshResult.device_id,
-      app_id: refreshResult.app_id,
-      access_token: refreshResult.access_token,
-      refresh_token,
-      access_token_expires_at: refreshResult.access_token_expires_at,
+      ...refreshResult,
       refreshed: true,
     };
   }

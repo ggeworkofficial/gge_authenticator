@@ -7,6 +7,7 @@ interface Options {
   checkUser?: boolean;
   checkDevice?: boolean;
   checkApp?: boolean;
+  checkSession?: boolean;
   allowPartial?: boolean;
 }
 
@@ -45,6 +46,7 @@ export const authorizeIdentity =
       const requestedUserId = extractId(req, ["user_id", "id"]);
       const requestedDeviceId = extractId(req, ["device_id", "id"]);
       const requestedAppId = extractId(req, ["app_id", "id"]);
+      const requestedSessionId = extractId(req, ["session_id", "id"]);
 
       if (options.checkUser && !requestedUserId && !options.allowPartial) {
         throw new AuthError("Missing user id in request", 400);
@@ -56,6 +58,10 @@ export const authorizeIdentity =
 
       if (options.checkApp && !requestedAppId && !options.allowPartial) {
         throw new AuthError("Missing app id in request", 400);
+      }
+
+      if (options.checkSession && !requestedSessionId && !options.allowPartial) {
+        throw new AuthError("Missing session id in request", 400);
       }
 
       // 🔐 Admin override
@@ -93,6 +99,15 @@ export const authorizeIdentity =
         requestedAppId !== authAppId
       ) {
         throw new AuthError("Forbidden: app mismatch", 403);
+      }
+
+      // 🔒 Session ownership
+      if (
+        options.checkSession &&
+        requestedSessionId &&
+        requestedSessionId !== req.auth?.session_id
+      ) {
+        throw new AuthError("Forbidden: session mismatch", 403);
       }
 
       next();
