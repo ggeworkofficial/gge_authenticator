@@ -2,8 +2,9 @@ import { Router } from "express";
 import { validateBody, validateParams, validateQuery } from "../middlewares/validator";
 import { createUserSchema, updateUserSchema, userIdParam } from "../validators/user.validator";
 import { userCreateController, userListController, userGetController, userUpdateController, userDeleteController } from "../controllers/user.controller";
-import { authenticateAppController, authenticateMiddleware } from "../controllers/auth.controller";
+import { authenticateAppController, authenticateMiddleware, isAdminMiddleware } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
+import { authorizeIdentity } from "../middlewares/identityAuthorizer";
 
 const router = Router();
 
@@ -22,6 +23,7 @@ router.post(
 router.get(
   "/",
   authenticateMiddleware,
+  isAdminMiddleware,
   rateLimiter({
     windowSeconds: 60,
     maxRequests: 20,
@@ -41,6 +43,10 @@ router.get(
       `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
   }),
   validateParams(userIdParam),
+  authorizeIdentity({
+    allowAdmin: true,
+    checkUser: true,
+  }),
   userGetController
 );
 
@@ -55,6 +61,10 @@ router.put(
   }),
   validateParams(userIdParam),
   validateBody(updateUserSchema),
+  authorizeIdentity({
+    allowAdmin: true,
+    checkUser: true,
+  }),
   userUpdateController
 );
 
@@ -68,6 +78,10 @@ router.delete(
       `user:${req.auth!.user_id}:device:${req.auth!.device_id}`,
   }),
   validateParams(userIdParam),
+  authorizeIdentity({
+    allowAdmin: true,
+    checkUser: true,
+  }),
   userDeleteController
 );
 export default router;
