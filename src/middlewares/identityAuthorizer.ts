@@ -11,11 +11,17 @@ interface Options {
   allowPartial?: boolean;
 }
 
-const extractId = (
+const extractIdentityValue = (
   req: Request,
-  keys: string[]
+  identityKey: "user_id" | "device_id" | "app_id" | "session_id",
+  requestKeys: string[]
 ): string | undefined => {
-  for (const key of keys) {
+  // 1️⃣ Canonical source (highest trust)
+  const fromIdentity = req.identity?.[identityKey];
+  if (fromIdentity) return fromIdentity;
+
+  // 2️⃣ Fallback to request input
+  for (const key of requestKeys) {
     const value =
       (req.params?.[key] as string) ??
       (req.body?.[key] as string) ??
@@ -23,8 +29,10 @@ const extractId = (
 
     if (value) return value;
   }
+
   return undefined;
 };
+
 
 
 export const authorizeIdentity =
@@ -43,10 +51,11 @@ export const authorizeIdentity =
 
       if (!authUserId || !authDeviceId || !authAppId) throw new AuthError("Some identity params are missing ")
 
-      const requestedUserId = extractId(req, ["user_id", "id"]);
-      const requestedDeviceId = extractId(req, ["device_id", "id"]);
-      const requestedAppId = extractId(req, ["app_id", "id"]);
-      const requestedSessionId = extractId(req, ["session_id", "id"]);
+      const requestedUserId = extractIdentityValue(req, "user_id", ["user_id", "id"]);
+      const requestedDeviceId = extractIdentityValue(req, "device_id", ["device_id", "id"]);
+      const requestedAppId = extractIdentityValue(req, "app_id", ["app_id", "id"]);
+      const requestedSessionId = extractIdentityValue(req, "session_id", ["session_id", "id"]);
+
 
       if (options.checkUser && !requestedUserId && !options.allowPartial) {
         throw new AuthError("Missing user id in request", 400);

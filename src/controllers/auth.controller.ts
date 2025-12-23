@@ -11,7 +11,13 @@ const getBaseUrl = () => process.env.BASE_URL || `http://localhost:${process.env
 
 declare module "express-serve-static-core" {
   interface Request {
-    auth?: AuthPayload
+    auth?: AuthPayload,
+    identity?: {
+        user_id?: string;
+        device_id?: string;
+        app_id?: string;
+        session_id?: string;
+      };
   }
 }
 

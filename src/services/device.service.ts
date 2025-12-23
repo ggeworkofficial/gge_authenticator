@@ -37,12 +37,29 @@ export class DeviceService {
     }
   }
 
+  // New: fetch device using both user_id and device_id (composite identifier)
+  async getDeviceByUserAndDeviceId(userId: string, deviceId: string): Promise<UserDevice> {
+    const transaction = await this.db.getTransaction();
+    try {
+      const device = await this.deviceRepo.findByUserAndDeviceId(userId, deviceId, transaction);
+      if (!device) throw new DeviceFindError("Device not found", { user_id: userId, device_id: deviceId });
+
+      await transaction.commit();
+      return device;
+    } catch (error) {
+      await transaction.rollback();
+      if (error instanceof DeviceFindError) throw error;
+      throw new DeviceFindError("Failed to fetch device", { user_id: userId, device_id: deviceId, cause: error });
+    }
+  }
+
+  // Backwards-compatible: keep single-id lookup by primary key
   async getDeviceById(id: string): Promise<UserDevice> {
     const transaction = await this.db.getTransaction();
     try {
       const device = await this.deviceRepo.findById(id, transaction);
       if (!device) throw new DeviceFindError("Device not found", { id });
-     
+
       await transaction.commit();
       return device;
     } catch (error) {
@@ -64,18 +81,19 @@ export class DeviceService {
     }
   }
 
-  async updateDevice(id: string, data: Partial<UserDevice>): Promise<UserDevice> {
+  // Update by composite identifiers: user_id + device_id
+  async updateDevice(userId: string, deviceId: string, data: Partial<UserDevice>): Promise<UserDevice> {
     const transaction = await this.db.getTransaction();
     try {
-      const updated = await this.deviceRepo.update(id, data, transaction);
-      if (!updated) throw new DeviceUpdateError("Device not found", { id });
-      
+      const updated = await this.deviceRepo.updateByUserAndDeviceId(userId, deviceId, data, transaction);
+      if (!updated) throw new DeviceUpdateError("Device not found", { user_id: userId, device_id: deviceId });
+
       await transaction.commit();
       return updated;
     } catch (error) {
       await transaction.rollback();
       if (error instanceof DeviceUpdateError) throw error;
-      throw new DeviceUpdateError("Failed to update device", { id, data, cause: error });
+      throw new DeviceUpdateError("Failed to update device", { user_id: userId, device_id: deviceId, data, cause: error });
     }
   }
 
