@@ -2,9 +2,9 @@ import { Request } from "express";
 import bcrypt from "bcrypt";
 import * as crypto from "crypto";
 import { v4 as uuidv4 } from "uuid";
-import { AuthRepository } from "../repositories/auth.repository";
-import { Postgres } from "../connections/postgres";
-import { User } from "../models/postgres/User";
+import { AuthRepository } from "../../repositories/auth.repository";
+import { Postgres } from "../../connections/postgres";
+import { User } from "../../models/postgres/User";
 import jwt from "jsonwebtoken";
 import {
   UserNotFoundError,
@@ -17,11 +17,11 @@ import {
   AccessTokenError,
   AuthError,
   RefreshTokenReplayError,
-} from "../errors/auth.error";
+} from "../../errors/auth.error";
 import dotenv from "dotenv";
-import { AppRepository } from "../repositories/app.repository";
-import { AppFindError, IncorrectAppSecretError } from "../errors/app.error";
-import { SessionNotFoundError } from "../errors/session.error";
+import { AppRepository } from "../../repositories/app.repository";
+import { AppFindError, IncorrectAppSecretError } from "../../errors/app.error";
+import { SessionNotFoundError } from "../../errors/session.error";
 
 dotenv.config();
 

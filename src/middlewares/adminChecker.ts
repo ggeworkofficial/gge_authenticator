@@ -1,6 +1,6 @@
 import { Response, Request, NextFunction } from "express";
 import { MainError } from "../errors/main.error";
-import { AuthService } from "../services/auth.service";
+import { AuthService } from "../services/auth/auth.service";
 import { NotAdminError } from "../errors/auth.error";
 
 export const isAdminMiddleware = async (req: Request, res: Response, next: NextFunction) => {

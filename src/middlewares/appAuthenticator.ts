@@ -1,6 +1,6 @@
 import { Response, Request, NextFunction} from "express";
 import { getAuthAppPayload } from "../helper/auth.helper";
-import { AuthService } from "../services/auth.service";
+import { AuthService } from "../services/auth/auth.service";
 
 export const authenticateAppMiddleware = async (
   req: Request,

@@ -1,6 +1,6 @@
 import { Request } from "express";
 import { MainError } from "../errors/main.error";
-import { AuthService } from "../services/auth.service";
+import { AuthService } from "../services/auth/auth.service";
 import { Logger } from "../utils/logger";
 import { AccessTokenExpiredError, AuthError } from "../errors/auth.error";
 

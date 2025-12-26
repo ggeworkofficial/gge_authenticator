@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import axios from "axios";
-import { AuthService } from "../services/auth.service";
+import { AuthService } from "../services/auth/auth.service";
 import {authenticateRequest, AuthPayload } from "../helper/auth.helper"; 
 import { MainError } from "../errors/main.error";
 import { AuthError } from "../errors/auth.error";

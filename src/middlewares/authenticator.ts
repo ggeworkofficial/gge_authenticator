@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { authenticateRequest, getAuthPayload } from "../helper/auth.helper";
-import { AuthService } from "../services/auth.service";
+import { AuthService } from "../services/auth/auth.service";
 import { getBaseUrl } from "../controllers/auth.controller";
 
 export const authenticateMiddleware = async (
