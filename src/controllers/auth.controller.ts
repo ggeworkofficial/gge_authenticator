@@ -157,44 +157,6 @@ export const changePasswordController = async (req: Request, res: Response, next
   }
 };
 
-export const authenticateAppController = async (
-  req: Request,
-  res: Response,
-  next: NextFunction
-) => {
-  try {
-    
-    const payload = getAuthAppPayload(req);
-    if (payload.type === "pkce") {
-      req.auth = {
-        code_challenger: payload.code_challenger,
-      };
-      return next();
-    }
-
-    const service = new AuthService();
-    if (payload.type === "hmac") {
-      await service.authenticateAppHmac({
-        app_id: payload.app_id,
-        signature: payload.signature,
-        timestamp: payload.timestamp,
-        req,
-      });
-      return next();
-    }
-    
-    if (payload.type === "internal") {
-      await service.validateInternalHmac({ ...payload, req });
-      return next();
-    }
-    
-
-    return next();
-  } catch (err) {
-    next(err);
-  }
-};
-
 export async function authenticateRequest(params: {
   access_token?: string;
   refresh_token?: string;

@@ -14,10 +14,11 @@ import {
 	deleteSessionsController,
 	deleteSessionByIdController,
 } from "../controllers/sessions.controller";
-import { authenticateAppController, isAdminMiddleware } from "../controllers/auth.controller";
+import { isAdminMiddleware } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
 import { authenticateMiddleware } from "../middlewares/authenticator";
+import { authenticateAppMiddleware } from "../middlewares/appAuthenticator";
 
 const router = Router();
 
@@ -28,7 +29,7 @@ router.post(
     maxRequests: 10,
 	keyGenerator: (req) => `session:${req.ip}`
   }),
-  authenticateAppController,
+  authenticateAppMiddleware,
   validateBody(createSessionSchema),
   createSessionController
 );

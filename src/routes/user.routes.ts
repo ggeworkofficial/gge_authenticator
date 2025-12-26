@@ -2,10 +2,11 @@ import { Router } from "express";
 import { validateBody, validateParams, validateQuery } from "../middlewares/validator";
 import { createUserSchema, updateUserSchema, userIdParam } from "../validators/user.validator";
 import { userCreateController, userListController, userGetController, userUpdateController, userDeleteController } from "../controllers/user.controller";
-import { authenticateAppController, isAdminMiddleware } from "../controllers/auth.controller";
+import { isAdminMiddleware } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
 import { authenticateMiddleware } from "../middlewares/authenticator";
+import { authenticateAppMiddleware } from "../middlewares/appAuthenticator";
 
 const router = Router();
 
@@ -16,7 +17,7 @@ router.post(
     maxRequests: 5,
     keyGenerator: (req) => `user:${req.ip}`,
   }),
-  authenticateAppController,
+  authenticateAppMiddleware,
   validateBody(createUserSchema),
   userCreateController
 );

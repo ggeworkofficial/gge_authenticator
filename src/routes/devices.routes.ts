@@ -13,11 +13,11 @@ import {
   deviceUpdateController,
   deviceDeleteController,
 } from "../controllers/device.controller";
-import { authenticateAppController } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
 import { extractDeviceIdentity } from "../middlewares/deviceIdentityExtractor";
 import { authenticateMiddleware } from "../middlewares/authenticator";
+import { authenticateAppMiddleware } from "../middlewares/appAuthenticator";
 
 const router = Router();
 
@@ -28,7 +28,7 @@ router.post(
     maxRequests: 10,
     keyGenerator: (req) => `create:devices:${req.ip}`
   }),
-  authenticateAppController,
+  authenticateAppMiddleware,
   validateBody(createDeviceSchema),
   deviceCreateController
 );
@@ -43,7 +43,7 @@ router.get(
     maxRequests: 30,
     keyGenerator: (req) => `get:devices:${req.ip}`
   }),
-  authenticateAppController,
+  authenticateAppMiddleware,
   validateQuery(deviceFilterSchema),
   deviceListController
 );
