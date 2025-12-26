@@ -33,6 +33,11 @@ type LoginPayload = {
 export class AuthService {
     private authRepo = new AuthRepository();
     private appRepo = new AppRepository();
+    private ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
+    private REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
+    private ACCESS_TTL = Number(process.env.ACCESS_TOKEN_TTL) || 900;
+    private REFRESH_TTL = Number(process.env.REFRESH_TTL as string) || 604800;
+    private db = Postgres.getInstance();
 
     public async isUserAdmin(userId: string): Promise<boolean> {
         try {
@@ -42,12 +47,6 @@ export class AuthService {
             throw new AuthError("Could not determine admin status", { userId, cause: err });
         }
     }
-
-    private ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
-    private REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
-    private ACCESS_TTL = Number(process.env.ACCESS_TOKEN_TTL) || 900;
-    private REFRESH_TTL = Number(process.env.REFRESH_TTL as string) || 604800;
-    private db = Postgres.getInstance();
 
     async login(payload: LoginPayload): Promise<User> {
         const transaction = await this.db.getTransaction();
@@ -238,7 +237,6 @@ export class AuthService {
         }
 
     }
-
 
     async changePassword(params: { user_id: string; old_password_hash: string; new_password_hash: string }): Promise<User> {
         const db = Postgres.getInstance();
