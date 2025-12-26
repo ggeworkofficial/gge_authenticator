@@ -9,7 +9,7 @@ import {
   verifyCodeSchema,
   authIdParamSchema,
 } from "../validators/auth.validator";
-import { loginController, registerController, refreshController, verifiyController, authenticateAppController, authenticateEndpoint, isAdminController } from "../controllers/auth.controller";
+import { loginController, registerController, refreshController, verifiyController, authenticateAppController, authenticateController, isAdminController } from "../controllers/auth.controller";
 import { changePasswordController } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
@@ -38,7 +38,7 @@ router.post(
   rateLimiter({ windowSeconds: 60, maxRequests: 10, keyGenerator: (req) => `authenticate:${req.ip}` }),
   authenticateAppController,
   validateBody(authenticateSchema),
-  authenticateEndpoint
+  authenticateController
 );
 
 router.post(

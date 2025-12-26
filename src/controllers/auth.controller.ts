@@ -253,7 +253,7 @@ export async function authenticateRequest(params: {
   }
 }
 
-export const authenticateEndpoint = async (
+export const authenticateController = async (
   req: Request,
   res: Response,
   next: NextFunction
