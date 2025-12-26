@@ -1,12 +1,13 @@
 import { NextFunction, Request, Response } from "express";
 import { DeviceService } from "../services/device.service";
-import { returnCodeChallange } from "./auth.controller";
 import { AuthError } from "../errors/auth.error";
+import { returnCodeChallange } from "../helper/auth.helper";
+
 
 export const deviceCreateController = async (req: Request, res: Response, next: NextFunction) => {
   const data = req.body;
   const code_challange = req.auth?.code_challenger;
-  try {
+  try { 
     const service = new DeviceService();
     const device = await service.createDevice(data);
     const codeChallangeSecret = await returnCodeChallange(null, device, code_challange);

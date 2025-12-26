@@ -1,8 +1,8 @@
 import { NextFunction, Request, Response } from "express";
 import { AppService } from "../services/app.service";
 import { UserApp } from "../models/postgres/UserApp";
-import { returnCodeChallange } from "./auth.controller";
 import { AuthError } from "../errors/auth.error";
+import { returnCodeChallange } from "../helper/auth.helper";
 
 
 export const appCreateController = async (req: Request, res: Response, next: NextFunction) => {
