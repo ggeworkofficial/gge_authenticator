@@ -14,11 +14,11 @@ import {
 	deleteSessionsController,
 	deleteSessionByIdController,
 } from "../controllers/sessions.controller";
-import { isAdminMiddleware } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
 import { authenticateMiddleware } from "../middlewares/authenticator";
 import { authenticateAppMiddleware } from "../middlewares/appAuthenticator";
+import { isAdminMiddleware } from "../middlewares/adminChecker";
 
 const router = Router();
 
