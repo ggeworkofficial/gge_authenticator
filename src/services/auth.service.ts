@@ -214,7 +214,6 @@ export class AuthService {
                 throw new RefreshTokenReplayError("Refresh token replay detected");
             }
 
-            // Update access token
             await this.authRepo.updateAccessTokenForSession(
                 sub,
                 device,

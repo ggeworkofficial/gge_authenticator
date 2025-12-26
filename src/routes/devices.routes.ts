@@ -33,9 +33,6 @@ router.post(
   deviceCreateController
 );
 
-/**
- * List devices (admin / app-level)
- */
 router.get(
   "/",
   rateLimiter({
@@ -48,9 +45,6 @@ router.get(
   deviceListController
 );
 
-/**
- * Get device by ID (user-level)
- */
 router.get(
   "/:id",
   authenticateMiddleware,
@@ -70,9 +64,6 @@ router.get(
   deviceGetController
 );
 
-/**
- * Update device (user-level, sensitive)
- */
 router.put(
   "/:id",
   authenticateMiddleware,
@@ -93,9 +84,6 @@ router.put(
   deviceUpdateController
 );
 
-/**
- * Delete devices (VERY sensitive)
- */
 router.delete(
   "/",
   authenticateMiddleware,

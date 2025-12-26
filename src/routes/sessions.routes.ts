@@ -34,9 +34,6 @@ router.post(
   createSessionController
 );
 
-/**
- * List sessions (admin)
- */
 router.get(
   "/",
   authenticateMiddleware,
