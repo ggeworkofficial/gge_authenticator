@@ -13,10 +13,11 @@ import {
   deviceUpdateController,
   deviceDeleteController,
 } from "../controllers/device.controller";
-import { authenticateAppController, authenticateMiddleware } from "../controllers/auth.controller";
+import { authenticateAppController } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
 import { extractDeviceIdentity } from "../middlewares/deviceIdentityExtractor";
+import { authenticateMiddleware } from "../middlewares/authenticator";
 
 const router = Router();
 

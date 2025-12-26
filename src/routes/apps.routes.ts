@@ -21,9 +21,10 @@ import {
   appCreateUserController, 
   changeAppSecretController
 } from "../controllers/app.controller";
-import { authenticateAppController, authenticateMiddleware, isAdminMiddleware } from "../controllers/auth.controller";
+import { authenticateAppController, isAdminMiddleware } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
+import { authenticateMiddleware } from "../middlewares/authenticator";
 
 const router = Router();
 

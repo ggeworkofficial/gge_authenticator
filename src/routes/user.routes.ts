@@ -2,9 +2,10 @@ import { Router } from "express";
 import { validateBody, validateParams, validateQuery } from "../middlewares/validator";
 import { createUserSchema, updateUserSchema, userIdParam } from "../validators/user.validator";
 import { userCreateController, userListController, userGetController, userUpdateController, userDeleteController } from "../controllers/user.controller";
-import { authenticateAppController, authenticateMiddleware, isAdminMiddleware } from "../controllers/auth.controller";
+import { authenticateAppController, isAdminMiddleware } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
+import { authenticateMiddleware } from "../middlewares/authenticator";
 
 const router = Router();
 

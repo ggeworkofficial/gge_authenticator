@@ -9,10 +9,11 @@ import {
   verifyCodeSchema,
   authIdParamSchema,
 } from "../validators/auth.validator";
-import { loginController, registerController, refreshController, verifiyController, authenticateAppController, authenticateEndpoint, authenticateMiddleware, isAdminMiddleware, isAdminController } from "../controllers/auth.controller";
+import { loginController, registerController, refreshController, verifiyController, authenticateAppController, authenticateEndpoint, isAdminController } from "../controllers/auth.controller";
 import { changePasswordController } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
+import { authenticateMiddleware } from "../middlewares/authenticator";
 
 const router = Router();
 

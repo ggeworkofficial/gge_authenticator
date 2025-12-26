@@ -6,7 +6,7 @@ import { MainError } from "../errors/main.error";
 import { AccessTokenExpiredError, AuthError, NotAdminError } from "../errors/auth.error";
 import { getAuthAppPayload, getAuthPayload, handleAppApi, handleDeviceApi, handleSessionApi, returnCodeChallange, returnInternalSigniture } from "../helper/auth.helper";
 
-const getBaseUrl = () => process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
+export const getBaseUrl = () => process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 
 declare module "express-serve-static-core" {
   interface Request {
@@ -252,28 +252,6 @@ export async function authenticateRequest(params: {
     };
   }
 }
-
-export const authenticateMiddleware = async (
-  req: Request,
-  _res: Response,
-  next: NextFunction
-) => {
-  try {
-    const payload = getAuthPayload(req);
-    const service = new AuthService();
-
-    const authResult = await authenticateRequest({
-      ...payload,
-      baseUrl: getBaseUrl(),
-      service,
-    });
-
-    req.auth = authResult;
-    next();
-  } catch (err) {
-    next(err);
-  }
-};
 
 export const authenticateEndpoint = async (
   req: Request,
