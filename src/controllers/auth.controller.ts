@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import axios, { head } from "axios";
 import { AuthService } from "../services/auth.service";
-import {AuthPayload } from "../helper/auth.helper"; 
+import {authenticateRequest, AuthPayload } from "../helper/auth.helper"; 
 import { MainError } from "../errors/main.error";
 import { AccessTokenExpiredError, AuthError, NotAdminError } from "../errors/auth.error";
 import { getAuthAppPayload, getAuthPayload, handleAppApi, handleDeviceApi, handleSessionApi, returnCodeChallange, returnInternalSigniture } from "../helper/auth.helper";
@@ -157,64 +157,6 @@ export const changePasswordController = async (req: Request, res: Response, next
   }
 };
 
-export async function authenticateRequest(params: {
-  access_token?: string;
-  refresh_token?: string;
-  accessTokenTtl?: number;
-  refreshTokenTtl?: number;
-  baseUrl: string;
-  service: AuthService;
-}) {
-  if (!params) throw new MainError("Prams is not provided", 401, {params});
-  const {
-    access_token,
-    refresh_token,
-    accessTokenTtl,
-    refreshTokenTtl,
-    service,
-  } = params;
-
-  try {
-    const identity = await service.authenticate(
-      access_token as string,
-    );
-
-    return {
-      ... identity,
-      access_token,
-      refresh_token,
-      refreshed: false,
-    };
-  } catch (err) {
-    if (!(err instanceof AccessTokenExpiredError)) {
-      throw err;
-    }
-
-    if (!refresh_token) {
-      throw new AuthError("Refresh token required", 401);
-    }
-
-    const refreshBody: any = {
-      refresh_token,
-    };
-
-    if (accessTokenTtl !== undefined) {
-      refreshBody.accessTokenTtl = accessTokenTtl;
-    }
-
-    const refreshResult = await service.refreshAccessToken({
-      refresh_token,
-      accessTtl: accessTokenTtl !== undefined ? Number(accessTokenTtl) : undefined,
-      refreshTtl: refreshTokenTtl !== undefined ? Number(refreshTokenTtl) : undefined
-    });
-
-    return {
-      ...refreshResult,
-      refreshed: true,
-    };
-  }
-}
-
 export const authenticateController = async (
   req: Request,
   res: Response,
@@ -226,7 +168,7 @@ export const authenticateController = async (
 
     if (!payload.user_id || !payload.device_id || !payload.app_id || !payload.access_token) {
       throw new MainError("Missing authentication parameters", 400);
-    }
+    } 
 
     const service = new AuthService();
     const authResult = await authenticateRequest({

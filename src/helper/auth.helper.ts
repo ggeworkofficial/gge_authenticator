@@ -2,7 +2,7 @@ import { Request } from "express";
 import { MainError } from "../errors/main.error";
 import { AuthService } from "../services/auth.service";
 import { Logger } from "../utils/logger";
-import { AuthError } from "../errors/auth.error";
+import { AccessTokenExpiredError, AuthError } from "../errors/auth.error";
 
 const logger = Logger.getLogger();
 
@@ -241,3 +241,61 @@ export const getAuthAppPayload = (req: Request): AuthAppPayload => {
     timestamp,
   };
 };
+
+export async function authenticateRequest(params: {
+  access_token?: string;
+  refresh_token?: string;
+  accessTokenTtl?: number;
+  refreshTokenTtl?: number;
+  baseUrl: string;
+  service: AuthService;
+}) {
+  if (!params) throw new MainError("Prams is not provided", 401, {params});
+  const {
+    access_token,
+    refresh_token,
+    accessTokenTtl,
+    refreshTokenTtl,
+    service,
+  } = params;
+
+  try {
+    const identity = await service.authenticate(
+      access_token as string,
+    );
+
+    return {
+      ... identity,
+      access_token,
+      refresh_token,
+      refreshed: false,
+    };
+  } catch (err) { 
+    if (!(err instanceof AccessTokenExpiredError)) {
+      throw err;
+    }
+
+    if (!refresh_token) {
+      throw new AuthError("Refresh token required", 401);
+    }
+
+    const refreshBody: any = {
+      refresh_token,
+    };
+
+    if (accessTokenTtl !== undefined) {
+      refreshBody.accessTokenTtl = accessTokenTtl;
+    }
+
+    const refreshResult = await service.refreshAccessToken({
+      refresh_token,
+      accessTtl: accessTokenTtl !== undefined ? Number(accessTokenTtl) : undefined,
+      refreshTtl: refreshTokenTtl !== undefined ? Number(refreshTokenTtl) : undefined
+    });
+
+    return {
+      ...refreshResult,
+      refreshed: true,
+    };
+  }
+}
