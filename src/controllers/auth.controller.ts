@@ -1,10 +1,10 @@
 import { Request, Response, NextFunction } from "express";
-import axios, { head } from "axios";
+import axios from "axios";
 import { AuthService } from "../services/auth.service";
 import {authenticateRequest, AuthPayload } from "../helper/auth.helper"; 
 import { MainError } from "../errors/main.error";
-import { AccessTokenExpiredError, AuthError, NotAdminError } from "../errors/auth.error";
-import { getAuthAppPayload, getAuthPayload, handleAppApi, handleDeviceApi, handleSessionApi, returnCodeChallange, returnInternalSigniture } from "../helper/auth.helper";
+import { AuthError } from "../errors/auth.error";
+import { getAuthPayload, handleAppApi, handleDeviceApi, handleSessionApi, returnCodeChallange, returnInternalSigniture } from "../helper/auth.helper";
 
 export const getBaseUrl = () => process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 
