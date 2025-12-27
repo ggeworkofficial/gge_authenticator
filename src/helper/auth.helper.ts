@@ -1,4 +1,5 @@
 import { Request } from "express";
+import axios from "axios";
 import { MainError } from "../errors/main.error";
 import { AuthService } from "../services/auth/auth.service";
 import { Logger } from "../utils/logger";

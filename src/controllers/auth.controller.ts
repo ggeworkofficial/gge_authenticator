@@ -166,7 +166,7 @@ export const authenticateController = async (
     const payload = getAuthPayload(req);
     const code_challanger = req.auth?.code_challenger
 
-    if (!payload.user_id || !payload.device_id || !payload.app_id || !payload.access_token) {
+    if (!payload.access_token) {
       throw new MainError("Missing authentication parameters", 400);
     } 
 
