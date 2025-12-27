@@ -37,7 +37,6 @@ export class DeviceService {
     }
   }
 
-  // New: fetch device using both user_id and device_id (composite identifier)
   async getDeviceByUserAndDeviceId(userId: string, deviceId: string): Promise<UserDevice> {
     const transaction = await this.db.getTransaction();
     try {
@@ -81,7 +80,6 @@ export class DeviceService {
     }
   }
 
-  // Update by composite identifiers: user_id + device_id
   async updateDevice(userId: string, deviceId: string, data: Partial<UserDevice>): Promise<UserDevice> {
     const transaction = await this.db.getTransaction();
     try {

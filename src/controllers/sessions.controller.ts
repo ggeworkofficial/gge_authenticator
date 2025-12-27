@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { SessionService } from "../services/session.service";
-import { returnCodeChallange } from "./auth.controller";
 import { AuthError } from "../errors/auth.error";
+import { returnCodeChallange } from "../helper/auth.helper";
 
 export const createSessionController = async (req: Request, res: Response, next: NextFunction) => {
   const { user_id, app_id, device_id, client_type, accessTokenTtl, refreshTokenttl } = req.body as any;

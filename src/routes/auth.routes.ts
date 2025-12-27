@@ -9,17 +9,19 @@ import {
   verifyCodeSchema,
   authIdParamSchema,
 } from "../validators/auth.validator";
-import { loginController, registerController, refreshController, verifiyController, authenticateAppController, authenticateEndpoint, authenticateMiddleware, isAdminMiddleware, isAdminController } from "../controllers/auth.controller";
+import { loginController, registerController, refreshController, verifiyController, authenticateController, isAdminController } from "../controllers/auth.controller";
 import { changePasswordController } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
+import { authenticateMiddleware } from "../middlewares/authenticator";
+import { authenticateAppMiddleware } from "../middlewares/appAuthenticator";
 
 const router = Router();
 
 router.post(
   "/login", 
   rateLimiter({windowSeconds: 60, maxRequests: 5, keyGenerator: (req) => `login:${req.ip}`}),
-  authenticateAppController, 
+  authenticateAppMiddleware, 
   validateBody(loginSchema), 
   loginController
 );
@@ -27,7 +29,7 @@ router.post(
 router.post(
   "/register",
   rateLimiter({ windowSeconds: 60, maxRequests: 3, keyGenerator: (req) => `register:${req.ip}` }),
-  authenticateAppController,
+  authenticateAppMiddleware,
   validateBody(registerSchema),
   registerController
 );
@@ -35,15 +37,15 @@ router.post(
 router.post(
   "/authenticate",
   rateLimiter({ windowSeconds: 60, maxRequests: 10, keyGenerator: (req) => `authenticate:${req.ip}` }),
-  authenticateAppController,
+  authenticateAppMiddleware,
   validateBody(authenticateSchema),
-  authenticateEndpoint
+  authenticateController
 );
 
 router.post(
   "/refresh",
   rateLimiter({ windowSeconds: 60, maxRequests: 20, keyGenerator: (req) => `refresh:${req.ip}` }),
-  authenticateAppController,
+  authenticateAppMiddleware,
   validateBody(refreshSchema),
   refreshController
 );

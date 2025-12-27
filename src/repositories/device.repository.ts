@@ -25,7 +25,6 @@ export class DeviceRepository {
     return UserDevice.findByPk(id, { transaction });
   }
 
-  // Find by composite identifiers: user_id + device_id
   public async findByUserAndDeviceId(userId: string, deviceId: string, transaction?: Transaction): Promise<UserDevice | null> {
     return UserDevice.findOne({ where: { user_id: userId, device_id: deviceId }, transaction });
   }
@@ -42,7 +41,6 @@ export class DeviceRepository {
     return device;
   }
 
-  // Update by composite identifiers: user_id + device_id
   public async updateByUserAndDeviceId(userId: string, deviceId: string, data: Partial<UserDevice>, transaction?: Transaction): Promise<UserDevice | null> {
     const device = await UserDevice.findOne({ where: { user_id: userId, device_id: deviceId }, transaction });
     if (!device) return null;

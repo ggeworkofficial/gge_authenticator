@@ -5,10 +5,9 @@ import dotenv from "dotenv";
 
 dotenv.config();
 
-const ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
-const REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
-
 export class SessionService {
+  private ACCESS_SECRET = process.env.ACCESS_TOKEN_SECRET as string;
+  private REFRESH_SECRET = process.env.REFRESH_TOKEN_SECRET as string;
   private repo = new SessionRepository();
 
   public async createSession(params: {
@@ -29,8 +28,8 @@ export class SessionService {
       const now = Math.floor(Date.now() / 1000);
       const accessExp = now + accessTtl;
       const refreshExp = now + refreshTtl;
-      const accessToken = jwt.sign({ sub: userId, app: appId, device: deviceId, type: "access" }, ACCESS_SECRET, { expiresIn: accessTtl });
-      const refreshToken = jwt.sign({ sub: userId, app: appId, device: deviceId, type: "refresh" }, REFRESH_SECRET, { expiresIn: refreshTtl });
+      const accessToken = jwt.sign({ sub: userId, app: appId, device: deviceId, type: "access" }, this.ACCESS_SECRET, { expiresIn: accessTtl });
+      const refreshToken = jwt.sign({ sub: userId, app: appId, device: deviceId, type: "refresh" }, this.REFRESH_SECRET, { expiresIn: refreshTtl });
 
       const accessTokenExpiresAt = new Date(accessExp * 1000);
       const refreshTokenExpiresAt = new Date(refreshExp * 1000);

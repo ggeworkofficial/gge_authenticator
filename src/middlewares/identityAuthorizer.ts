@@ -1,6 +1,6 @@
 import { Request, Response, NextFunction } from "express";
 import { AuthError } from "../errors/auth.error";
-import { AuthService } from "../services/auth.service";
+import { AuthService } from "../services/auth/auth.service";
 
 interface Options {
   allowAdmin?: boolean;

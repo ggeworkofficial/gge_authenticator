@@ -13,10 +13,11 @@ import {
   deviceUpdateController,
   deviceDeleteController,
 } from "../controllers/device.controller";
-import { authenticateAppController, authenticateMiddleware } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
 import { extractDeviceIdentity } from "../middlewares/deviceIdentityExtractor";
+import { authenticateMiddleware } from "../middlewares/authenticator";
+import { authenticateAppMiddleware } from "../middlewares/appAuthenticator";
 
 const router = Router();
 
@@ -27,14 +28,11 @@ router.post(
     maxRequests: 10,
     keyGenerator: (req) => `create:devices:${req.ip}`
   }),
-  authenticateAppController,
+  authenticateAppMiddleware,
   validateBody(createDeviceSchema),
   deviceCreateController
 );
 
-/**
- * List devices (admin / app-level)
- */
 router.get(
   "/",
   rateLimiter({
@@ -42,14 +40,11 @@ router.get(
     maxRequests: 30,
     keyGenerator: (req) => `get:devices:${req.ip}`
   }),
-  authenticateAppController,
+  authenticateAppMiddleware,
   validateQuery(deviceFilterSchema),
   deviceListController
 );
 
-/**
- * Get device by ID (user-level)
- */
 router.get(
   "/:id",
   authenticateMiddleware,
@@ -69,9 +64,6 @@ router.get(
   deviceGetController
 );
 
-/**
- * Update device (user-level, sensitive)
- */
 router.put(
   "/:id",
   authenticateMiddleware,
@@ -92,9 +84,6 @@ router.put(
   deviceUpdateController
 );
 
-/**
- * Delete devices (VERY sensitive)
- */
 router.delete(
   "/",
   authenticateMiddleware,
