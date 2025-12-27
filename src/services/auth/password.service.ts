@@ -3,6 +3,7 @@ import { Postgres } from "../../connections/postgres";
 import { AuthRepository } from "../../repositories/auth.repository";
 import { UserNotFoundError, IncorrectPasswordError, PasswordChangeError, PasswordMatchError } from "../../errors/auth.error";
 import { User } from "../../models/postgres/User";
+import { UserMapper, UserSelfDTO } from "../../DTO/user.dto";
 
 type LoginPayload = { email: string; password_hash: string };
 
@@ -30,7 +31,7 @@ export class PasswordAuthService {
     }
   }
 
-  async changePassword(params: { user_id: string; old_password_hash: string; new_password_hash: string }): Promise<User> {
+  async changePassword(params: { user_id: string; old_password_hash: string; new_password_hash: string }): Promise<UserSelfDTO> {
     const db = Postgres.getInstance();
     const tx = await db.getTransaction();
     try {
@@ -50,7 +51,7 @@ export class PasswordAuthService {
       if (!updated) throw new PasswordChangeError("Failed to update password", { user_id });
 
       await tx.commit();
-      return updated;
+      return UserMapper.toSelf(updated);
     } catch (err) {
       await tx.rollback();
       if (err instanceof PasswordMatchError) throw err;
