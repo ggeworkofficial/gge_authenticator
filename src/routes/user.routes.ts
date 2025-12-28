@@ -1,12 +1,14 @@
 import { Router } from "express";
 import { validateBody, validateParams, validateQuery } from "../middlewares/validator";
 import { createUserSchema, updateUserSchema, userIdParam } from "../validators/user.validator";
-import { userCreateController, userListController, userGetController, userUpdateController, userDeleteController } from "../controllers/user.controller";
+import { userCreateController, userListController, userGetController, userUpdateController, userDeleteController, setUserAdminController } from "../controllers/user.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
 import { authenticateMiddleware } from "../middlewares/authenticator";
 import { authenticateAppMiddleware } from "../middlewares/appAuthenticator";
 import { isAdminMiddleware } from "../middlewares/adminChecker";
+import { isSuperAdminMiddleware } from "../middlewares/adminChecker";
+import { setAdminSchema } from "../validators/user.validator";
 
 const router = Router();
 
@@ -85,5 +87,19 @@ router.delete(
     checkUser: true,
   }),
   userDeleteController
+);
+
+router.patch(
+  "/admin/:id",
+  authenticateMiddleware,
+  isSuperAdminMiddleware,
+  rateLimiter({
+    windowSeconds: 60,
+    maxRequests: 2,
+    keyGenerator: (req) => `user:promote:${req.auth!.user_id}`,
+  }),
+  validateParams(userIdParam),
+  validateBody(setAdminSchema),
+  setUserAdminController
 );
 export default router;

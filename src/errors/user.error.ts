@@ -29,3 +29,10 @@ export class UserDeleteError extends MainError {
     super(message, 400, details);
   }
 }
+
+export class UserPromotionError extends MainError {
+  constructor(message: string, details?: any) {
+    super(message, 400, details);
+    this.name = "UserPromotionError";
+  }
+}

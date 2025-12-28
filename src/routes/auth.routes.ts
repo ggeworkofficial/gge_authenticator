@@ -9,12 +9,13 @@ import {
   verifyCodeSchema,
   authIdParamSchema,
 } from "../validators/auth.validator";
-import { loginController, registerController, refreshController, verifiyController, authenticateController, isAdminController } from "../controllers/auth.controller";
+import { loginController, registerController, refreshController, verifiyController, authenticateController, isAdminController, isSuperAdminController } from "../controllers/auth.controller";
 import { changePasswordController } from "../controllers/auth.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
 import { authenticateMiddleware } from "../middlewares/authenticator";
 import { authenticateAppMiddleware } from "../middlewares/appAuthenticator";
+import { isAdminMiddleware } from "../middlewares/adminChecker";
 
 const router = Router();
 
@@ -78,6 +79,14 @@ router.get(
     checkUser: true
   }),
   isAdminController
+);
+
+router.get(
+  "/is-superadmin",
+  authenticateMiddleware,
+  isAdminMiddleware,
+  rateLimiter({ windowSeconds: 60, maxRequests: 20, keyGenerator: (req) => `is-superadmin:${req.auth?.user_id}` }),
+  isSuperAdminController
 );
 //router.post("/verify-email", validateBody(verifiyEmailSchema), verifiyEmailController);
 export default router;

@@ -70,3 +70,17 @@ export const userDeleteController = async (req: Request, res: Response, next: Ne
     next(error);
   }
 };
+
+export const setUserAdminController = async (req: Request, res: Response, next: NextFunction) => {
+  const { id } = req.params as any;
+  const { is_admin } = req.body as any;
+
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
+  try {
+    const service = new UserService();
+    const updated = await service.updateUserAdmin(id, !!is_admin);
+    res.status(200).json({ user: updated });
+  } catch (error) {
+    next(error);
+  }
+};

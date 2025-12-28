@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import axios from "axios";
 import { AuthService } from "../services/auth/auth.service";
+import { AdminAuthService } from "../services/auth/admin.service";
 import {authenticateRequest, AuthPayload } from "../helper/auth.helper"; 
 import { MainError } from "../errors/main.error";
 import { AuthError } from "../errors/auth.error";
@@ -217,6 +218,19 @@ export const isAdminController = async (req: Request, res: Response, next: NextF
     const service = new AuthService();
     const result = await service.isUserAdmin(params.id);
     res.status(200).json({ is_admin: !!result });
+  } catch (err) {
+    next(err);
+  }
+};
+
+export const isSuperAdminController = async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    const callerId = (req as any).auth?.user_id || (req.headers['x-user-id'] as string);
+    if (!callerId) throw new AuthError("Authentication was not provided", 401);
+
+    const service = new AdminAuthService();
+    const result = await service.isUserSuperAdmin(callerId);
+    res.status(200).json({ is_superadmin: !!result });
   } catch (err) {
     next(err);
   }

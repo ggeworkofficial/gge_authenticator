@@ -20,3 +20,7 @@ export const updateUserSchema = Joi.object({
 export const userIdParam = Joi.object({
     id: Joi.string().uuid().required(),
 });
+
+export const setAdminSchema = Joi.object({
+    is_admin: Joi.boolean().required(),
+});

@@ -58,6 +58,11 @@ export class User extends Model<User> {
 
   @Default(false)
   @AllowNull(false)
+  @Column({ type: DataType.BOOLEAN, field: "is_super_admin" })
+  isSuperAdmin!: boolean;
+
+  @Default(false)
+  @AllowNull(false)
   @Column({ type: DataType.BOOLEAN, field: "is_verified" })
   is_verified!: boolean;
 
