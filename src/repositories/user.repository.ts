@@ -29,4 +29,11 @@ export class UserRepository {
   public async findByEmail(email: string, transaction?: Transaction): Promise<User | null> {
     return User.findOne({ where: { email }, transaction });
   }
+
+  public async setAdminStatus(id: string, isAdmin: boolean, transaction?: Transaction): Promise<User | null> {
+    const user = await this.findById(id, transaction);
+    if (!user) return null;
+    await user.update({ is_admin: isAdmin } as any, { transaction });
+    return user;
+  }
 }

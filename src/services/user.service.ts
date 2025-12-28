@@ -9,6 +9,7 @@ import {
 } from "../errors/user.error";
 import { User } from "../models/postgres/User";
 import { UserRepository } from "../repositories/user.repository";
+import { UserPromotionError } from "../errors/user.error";
 import { PublicUserDTO, UserMapper, UserSelfDTO } from "../DTO/user.dto";
 
 export class UserService {
@@ -88,6 +89,24 @@ export class UserService {
       await transaction.rollback();
       if (error instanceof UserDeleteError) throw error;
       throw new UserDeleteError("Failed to delete user", { id, cause: error });
+    }
+  }
+
+  async updateUserAdmin(targetUserId: string, makeAdmin: boolean = true) {
+    const transaction = await this.db.getTransaction();
+    try {
+      const user = await this.repo.findById(targetUserId, transaction);
+      if (!user) throw new UserPromotionError("User not found", { id: targetUserId });
+
+      const updated = await this.repo.setAdminStatus(targetUserId, !!makeAdmin, transaction);
+      if (!updated) throw new UserPromotionError("Failed to update admin status", { id: targetUserId });
+
+      await transaction.commit();
+      return UserMapper.toSelf(updated);
+    } catch (error) {
+      await transaction.rollback();
+      if (error instanceof UserPromotionError) throw error;
+      throw new UserPromotionError("Failed to promote user", { id: targetUserId, cause: error });
     }
   }
 }
