@@ -80,3 +80,10 @@ export class NotAdminError extends MainError {
     this.name = "NotAdminError";
   }
 }
+
+export class NotSuperAdminError extends MainError {
+  constructor(message = "User is not a super admin", details?: any) {
+    super(message, 403, details);
+    this.name = "NotSuperAdminError";
+  }
+}

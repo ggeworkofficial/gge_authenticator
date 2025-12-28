@@ -11,4 +11,13 @@ export class AdminAuthService {
       throw err;
     }
   }
+
+  public async isUserSuperAdmin(userId: string): Promise<boolean> {
+    try {
+      const flag = await this.authRepo.isUserSuperAdmin(userId);
+      return !!flag;
+    } catch (err) {
+      throw err;
+    }
+  }
 }

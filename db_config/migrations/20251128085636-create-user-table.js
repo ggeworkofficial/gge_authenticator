@@ -24,6 +24,11 @@ module.exports = {
       phone: {
         type: Sequelize.STRING
       },
+      is_super_admin: {
+        type: Sequelize.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+      },
       created_at: {
         type: Sequelize.DATE,
         defaultValue: Sequelize.literal('NOW()'),
