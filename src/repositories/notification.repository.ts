@@ -1,26 +1,28 @@
 import { ObjectId } from "mongodb";
-import { Notification, NotificationDocument } from "../models/mongodb/NotificationDocument";
-import { MongoDB } from "../connections/mongodb";
+import { getNotificationCollection, NotificationDocument } from "../models/mongodb/NotificationDocument";
+import { getUnreadCounterCollection, UnreadCounterDocument } from "../models/mongodb/UnreadCounterDocument";
 
+const UnreadCounter = getUnreadCounterCollection();
+const Notification = getNotificationCollection();
 export class NotificationRepository {
-  private db = MongoDB.getInstance();
   private collection = Notification;
-
   /**
    * Start watching insert events on the notifications collection.
    * onInsert will be called with the full inserted document.
    * Returns the changeStream so caller can close it when needed.
    */
+
   public watchInserts(onInsert: (doc: NotificationDocument) => void) {
     const pipeline = [
       { $match: { operationType: "insert" } },
     ];
 
     const changeStream = this.collection.watch(pipeline, { fullDocument: "updateLookup" });
-
+    console.log("Started watching notification inserts");
     changeStream.on("change", (change: any) => {
       try {
         const doc = change.fullDocument as NotificationDocument;
+        console.log(`New notification inserted: ${doc._id} for user ${doc.userId}`);
         onInsert(doc);
       } catch (err) {
         // swallow handler errors to keep stream alive
@@ -33,6 +35,43 @@ export class NotificationRepository {
     });
 
     return changeStream;
+  }
+
+  /**
+   * Increment (or decrement) unread counter for a user/app/device combination.
+   * Creates the document if it does not exist.
+   */
+  private async incrementUnreadCounter(
+    userId: string,
+    appId?: string,
+    deviceId?: string,
+    delta = 1
+  ): Promise<UnreadCounterDocument> {
+    const filter: any = { userId };
+    if (appId) filter.appId = appId;
+    if (deviceId) filter.deviceId = deviceId;
+
+    const update = {
+      $inc: { unreadCount: delta },
+      $set: { updatedAt: new Date() },
+      $setOnInsert: { userId, appId: appId || undefined, deviceId: deviceId || undefined },
+    } as any;
+
+    await UnreadCounter.updateOne(filter, update, { upsert: true });
+
+    const doc = await UnreadCounter.findOne(filter) as any;
+
+    // normalize _id to string like other models
+    const result: UnreadCounterDocument = {
+      _id: doc?._id?.toString(),
+      userId: doc.userId,
+      appId: doc.appId,
+      deviceId: doc.deviceId,
+      unreadCount: doc.unreadCount || 0,
+      updatedAt: doc.updatedAt,
+    };
+
+    return result;
   }
 
   public closeChangeStream(changeStream: any) {
@@ -50,13 +89,14 @@ export class NotificationRepository {
       title: data.title || "",
       message: data.message || "",
       metadata: data.metadata || {},
-      read: !!data.read,
-      delivered: !!data.delivered,
+      read: data.read ?? false,
+      delivered: data.delivered ?? false,
       createdAt: data.createdAt || new Date(),
       expiresAt: data.expiresAt,
     };
 
     const res = await this.collection.insertOne(payload as any);
+    await this.incrementUnreadCounter(data.userId!, data.metadata?.appId, data.metadata?.deviceId, 1);
     const inserted = await this.collection.findOne({ _id: res.insertedId } as any) as any;
     return this.normalize(inserted);
   }
