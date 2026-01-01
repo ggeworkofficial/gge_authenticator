@@ -15,4 +15,7 @@ export interface NotificationDocument {
     expiresAt?: Date;              
 };
 
-export const Notification = mongodb.getDB().collection<NotificationDocument>("notifications");
+
+export function getNotificationCollection() {
+    return mongodb.getDB().collection<NotificationDocument>("notifications");
+}
