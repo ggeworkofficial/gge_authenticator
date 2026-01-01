@@ -6,6 +6,8 @@ import {authenticateRequest, AuthPayload } from "../helper/auth.helper";
 import { MainError } from "../errors/main.error";
 import { AuthError } from "../errors/auth.error";
 import { getAuthPayload, handleAppApi, handleDeviceApi, handleSessionApi, returnCodeChallange, returnInternalSigniture } from "../helper/auth.helper";
+import { NotificationService } from "../services/notification/notification.service";
+import { SelfObserver } from "../services/notification/observers/self.observer";
 
 export const getBaseUrl = () => process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 
@@ -27,7 +29,11 @@ export const loginController = async (req: Request, res: Response, next: NextFun
   const base = getBaseUrl();
   const code_challange = req.auth?.code_challenger;
   let response;
+  const notificationService = new NotificationService();
   try {
+    notificationService.addObserver(new SelfObserver());
+    notificationService.startWatching();
+
     const service = new AuthService();
     const user = await service.login({
       email: payload.email,
@@ -67,8 +73,22 @@ export const loginController = async (req: Request, res: Response, next: NextFun
     }
     
     const codeChallange = await returnCodeChallange(service, response, code_challange);
+    notificationService.insertNotification({
+      userId: user.id,
+      type: "info",
+      title: "Login Successful",
+      message: `You have successfully logged in to app ${app.name} with device ${device.device_name || device.device_id || device.id}`,
+      metadata: {
+        appId: app.id,
+        deviceId: device.device_id || device.id,
+      },
+      createdAt: new Date(),
+    });
+    
     res.status(200).json(codeChallange ?? response);
   } catch (err) {
+    notificationService.stopWatching();
+    notificationService.clearObservers();
     next(err);
   }
 };
