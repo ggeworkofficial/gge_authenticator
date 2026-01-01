@@ -7,8 +7,8 @@ import { Logger } from "./utils/logger";
 import { MongoDB } from "./connections/mongodb";
 import { RedisClient } from "./connections/redis";
 import { createServer } from "http";
-import { Server as SocketIOServer } from "socket.io";
-
+import { initSocket } from "./socket/socket.server";
+import { initUnreadCounterIndexes } from "./models/mongodb/UnreadCounterDocument";
 const mongodb = MongoDB.getInstance();
 
 const logger = Logger.getLogger();
@@ -16,6 +16,7 @@ const logger = Logger.getLogger();
 dotenv.config();
 async function start() {
   await mongodb.connect();
+  await initUnreadCounterIndexes();
   RedisClient.getInstance();
 
   const app = express();
@@ -39,20 +40,7 @@ async function start() {
   const PORT = process.env.PORT;
   const httpServer = createServer(app);
 
-  const io = new SocketIOServer(httpServer, {
-    cors: {
-      origin: "*", // allow your frontend origin here
-      methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
-    },
-  });
-
-  io.on("connection", (socket) => {
-    logger.info(`Client connected: ${socket.id}`);
-
-    socket.on("disconnect", () => {
-      logger.info(`Client disconnected: ${socket.id}`);
-    });
-  });
+  initSocket(httpServer);
 
   httpServer.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
 }
