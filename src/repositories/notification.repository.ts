@@ -1,6 +1,10 @@
 import { ObjectId } from "mongodb";
 import { getNotificationCollection, NotificationDocument } from "../models/mongodb/NotificationDocument";
 import { getUnreadCounterCollection, UnreadCounterDocument } from "../models/mongodb/UnreadCounterDocument";
+import {
+  NotificationRepositoryError,
+  InvalidNotificationIdError,
+} from "../errors/notification.error";
 
 const UnreadCounter = getUnreadCounterCollection();
 const Notification = getNotificationCollection();
@@ -57,21 +61,24 @@ export class NotificationRepository {
       $setOnInsert: { userId, appId: appId || undefined, deviceId: deviceId || undefined },
     } as any;
 
-    await UnreadCounter.updateOne(filter, update, { upsert: true });
+    try {
+      await UnreadCounter.updateOne(filter, update, { upsert: true });
+      const doc = await UnreadCounter.findOne(filter) as any;
 
-    const doc = await UnreadCounter.findOne(filter) as any;
+      // normalize _id to string like other models
+      const result: UnreadCounterDocument = {
+        _id: doc?._id?.toString(),
+        userId: doc.userId,
+        appId: doc.appId,
+        deviceId: doc.deviceId,
+        unreadCount: doc.unreadCount || 0,
+        updatedAt: doc.updatedAt,
+      };
 
-    // normalize _id to string like other models
-    const result: UnreadCounterDocument = {
-      _id: doc?._id?.toString(),
-      userId: doc.userId,
-      appId: doc.appId,
-      deviceId: doc.deviceId,
-      unreadCount: doc.unreadCount || 0,
-      updatedAt: doc.updatedAt,
-    };
-
-    return result;
+      return result;
+    } catch (err: any) {
+      throw new NotificationRepositoryError("Failed to increment unread counter", err?.message || err);
+    }
   }
 
   public closeChangeStream(changeStream: any) {
@@ -83,77 +90,121 @@ export class NotificationRepository {
   }
 
   public async insertNotification(data: Partial<NotificationDocument>): Promise<NotificationDocument> {
-    const payload: Partial<NotificationDocument> = {
-      userId: data.userId!,
-      type: data.type || "info",
-      title: data.title || "",
-      message: data.message || "",
-      metadata: data.metadata || {},
-      read: data.read ?? false,
-      delivered: data.delivered ?? false,
-      createdAt: data.createdAt || new Date(),
-      expiresAt: data.expiresAt,
-    };
+    try {
+      const payload: Partial<NotificationDocument> = {
+        userId: data.userId!,
+        type: data.type || "info",
+        title: data.title || "",
+        message: data.message || "",
+        metadata: data.metadata || {},
+        read: data.read ?? false,
+        delivered: data.delivered ?? false,
+        createdAt: data.createdAt || new Date(),
+        expiresAt: data.expiresAt,
+      };
 
-    const res = await this.collection.insertOne(payload as any);
-    await this.incrementUnreadCounter(data.userId!, data.metadata?.appId, data.metadata?.deviceId, 1);
-    const inserted = await this.collection.findOne({ _id: res.insertedId } as any) as any;
-    return this.normalize(inserted);
+      const res = await this.collection.insertOne(payload as any);
+      await this.incrementUnreadCounter(data.userId!, data.metadata?.appId, data.metadata?.deviceId, 1);
+      const inserted = await this.collection.findOne({ _id: res.insertedId } as any) as any;
+      return this.normalize(inserted);
+    } catch (err: any) {
+      throw new NotificationRepositoryError("Failed to insert notification", err?.message || err);
+    }
   }
 
   public async updateRead(notificationId: string, read: boolean): Promise<boolean> {
-    const _id = this.toObjectId(notificationId);
-    const res = await this.collection.updateOne({ _id } as any, { $set: { read } } as any);
-    return res.modifiedCount > 0;
-  }
+    try {
+      const _id = this.toObjectId(notificationId);
 
+    const res = await this.collection.findOneAndUpdate(
+      { _id, read: false },              // only if unread
+      { $set: { read: true } },
+      { returnDocument: "before" }       // get OLD doc
+    );
+
+    if (!res) {
+      return false; // already read or not found
+    }
+
+    const doc = res;
+
+    await this.incrementUnreadCounter(
+      doc.userId,
+      doc.metadata?.appId,
+      doc.metadata?.deviceId,
+      -1
+    );
+
+    return true;
+
+  } catch (err: any) {
+    if (err instanceof InvalidNotificationIdError) throw err;
+    throw new NotificationRepositoryError("Failed to update read status", err?.message || err);
+  }
+}
   public async updateNotification(notificationId: string, data: Partial<NotificationDocument>): Promise<NotificationDocument | null> {
-    const _id = this.toObjectId(notificationId);
-    const update = { ...data } as any;
-    // prevent overriding _id
-    delete update._id;
-    await this.collection.updateOne({ _id } as any, { $set: update } as any);
-    const doc = await this.collection.findOne({ _id } as any) as any;
-    return doc ? this.normalize(doc) : null;
+    try {
+      const _id = this.toObjectId(notificationId);
+      const update = { ...data } as any;
+      // prevent overriding _id
+      delete update._id;
+      await this.collection.updateOne({ _id } as any, { $set: update } as any);
+      const doc = await this.collection.findOne({ _id } as any) as any;
+      return doc ? this.normalize(doc) : null;
+    } catch (err: any) {
+      if (err instanceof InvalidNotificationIdError) throw err;
+      throw new NotificationRepositoryError("Failed to update notification", err?.message || err);
+    }
   }
 
   public async deleteNotification(notificationId: string): Promise<boolean> {
-    const _id = this.toObjectId(notificationId);
-    const res = await this.collection.deleteOne({ _id } as any);
-    return res.deletedCount > 0;
+    try {
+      const _id = this.toObjectId(notificationId);
+      const res = await this.collection.deleteOne({ _id } as any);
+      return res.deletedCount > 0;
+    } catch (err: any) {
+      if (err instanceof InvalidNotificationIdError) throw err;
+      throw new NotificationRepositoryError("Failed to delete notification", err?.message || err);
+    }
   }
 
   /**
    * Cursor-based pagination using ObjectId cursor. Returns items and nextCursor (string _id) when more available.
    * If lastId is provided, it will return documents with _id < lastId (newest first).
    */
-  public async listNotifications(userId: string, limit = 20, lastId?: string) {
-    const filter: any = { userId };
-    if (lastId) {
-      filter._id = { $lt: this.toObjectId(lastId) };
+  public async listNotifications(userId: string, limit = 20, lastId?: string, appId?: string, deviceId?: string) {
+    try {
+      const filter: any = { userId };
+      if (lastId) {
+        filter._id = { $lt: this.toObjectId(lastId) };
+      }
+
+      const cursor = this.collection.find(filter).sort({ _id: -1 }).limit(limit + 1);
+      const docs = await cursor.toArray() as any[];
+
+      let nextCursor: string | undefined = undefined;
+      if (docs.length > limit) {
+        const next = docs[limit];
+        nextCursor = next._id.toString();
+        docs.splice(limit, 1);
+      }
+
+      const items = docs.map((d) => this.normalize(d));
+
+      return {
+        items,
+        nextCursor,
+      };
+    } catch (err: any) {
+      throw new NotificationRepositoryError("Failed to list notifications", err?.message || err);
     }
-
-    const cursor = this.collection.find(filter).sort({ _id: -1 }).limit(limit + 1);
-    const docs = await cursor.toArray() as any[];
-
-    let nextCursor: string | undefined = undefined;
-    if (docs.length > limit) {
-      const next = docs[limit];
-      nextCursor = next._id.toString();
-      docs.splice(limit, 1);
-    }
-
-    return {
-      items: docs.map((d) => this.normalize(d)),
-      nextCursor,
-    };
   }
 
   private toObjectId(id: string) {
     try {
       return new ObjectId(id);
     } catch (err) {
-      throw new Error("Invalid ObjectId");
+      throw new InvalidNotificationIdError("Invalid notification id", err);
     }
   }
 

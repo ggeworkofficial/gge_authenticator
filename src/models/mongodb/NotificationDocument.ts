@@ -1,9 +1,10 @@
+import { ObjectId } from "mongodb";
 import { MongoDB } from "../../connections/mongodb";
 
 const mongodb = MongoDB.getInstance();
 
 export interface NotificationDocument {
-    _id?: string;                  
+    _id?: ObjectId;                  
     userId: string;                
     type: "info" | "warning" | "error" | "success" | "2FA" | string; 
     title: string;                 
