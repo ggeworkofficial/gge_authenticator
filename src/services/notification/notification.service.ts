@@ -1,6 +1,10 @@
 import { NotificationDocument } from "../../models/mongodb/NotificationDocument";
 import { NotificationRepository } from "../../repositories/notification.repository";
 import { Observer } from "./observers/observer.interface";
+import ListNotificationService from "./listNotification.service";
+import UpdateReadService from "./readNotification.service";
+import UpdateNotificationService from "./updateNotification.service";
+import DeleteNotificationService from "./deleteNotification.service";
 interface Subject {
     addObserver(observer: Observer): void;
     removeObserver(observer: Observer): void;
@@ -12,6 +16,13 @@ export class NotificationService implements Subject {
     private observers: Observer[] = [];
     private notificationRepo: NotificationRepository = new NotificationRepository();
     private changeStream: any;
+
+    constructor(
+        private listSvc = ListNotificationService,
+        private updateReadSvc = UpdateReadService,
+        private updateSvc = UpdateNotificationService,
+        private deleteSvc = DeleteNotificationService
+    ) {}
 
     addObserver(observer: Observer): void {
         this.observers.push(observer);
@@ -42,5 +53,24 @@ export class NotificationService implements Subject {
 
     stopWatching(): void {
         if (this.changeStream) this.notificationRepo.closeChangeStream(this.changeStream);
+    }
+
+    public async listNotifications(userId: string, limit = 20, lastId?: string, appId?: string, deviceId?: string) {
+        const result = await this.listSvc.execute(userId, limit, lastId, appId, deviceId);
+        const items = result.items || [];
+
+        return { items, nextCursor: result.nextCursor };
+    }
+
+    public async updateRead(notificationId: string, read: boolean) {
+        return this.updateReadSvc.execute(notificationId, read);
+    }
+
+    public async updateNotification(notificationId: string, data: Partial<NotificationDocument>) {
+        return this.updateSvc.execute(notificationId, data);
+    }
+
+    public async deleteNotification(notificationId: string) {
+        return this.deleteSvc.execute(notificationId);
     }
 }
