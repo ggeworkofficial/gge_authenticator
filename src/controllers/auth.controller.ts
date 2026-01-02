@@ -6,8 +6,6 @@ import {authenticateRequest, AuthPayload } from "../helper/auth.helper";
 import { MainError } from "../errors/main.error";
 import { AuthError } from "../errors/auth.error";
 import { getAuthPayload, handleAppApi, handleDeviceApi, handleSessionApi, returnCodeChallange, returnInternalSigniture } from "../helper/auth.helper";
-import { NotificationService } from "../services/notification/notification.service";
-import { SelfObserver } from "../services/notification/observers/self.observer";
 
 export const getBaseUrl = () => process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 
@@ -29,25 +27,21 @@ export const loginController = async (req: Request, res: Response, next: NextFun
   const base = getBaseUrl();
   const code_challange = req.auth?.code_challenger;
   let response;
-  const notificationService = new NotificationService();
   try {
-    notificationService.addObserver(new SelfObserver());
-    notificationService.startWatching();
-
     const service = new AuthService();
     const user = await service.login({
       email: payload.email,
       password_hash: payload.password_hash,
     });
+
     const devicePayload = {
       user_id: user.id,
       device_id: payload.device_id,
       device_name: payload.device_name,
       device_type: payload.device_type,
     };
-    
-    headers = await returnInternalSigniture(service, 'POST', '/devices', devicePayload);
 
+    headers = await returnInternalSigniture(service, 'POST', '/devices', devicePayload);
     const device = await handleDeviceApi(base, devicePayload, headers);
 
     headers = await returnInternalSigniture(service, 'GET', `/apps/${payload.app_id}`);
@@ -70,25 +64,35 @@ export const loginController = async (req: Request, res: Response, next: NextFun
       device_id: device.device_id,
       app_id: app.id,
       ...session,
-    }
-    
+    };
+
     const codeChallange = await returnCodeChallange(service, response, code_challange);
-    notificationService.insertNotification({
-      userId: user.id,
-      type: "info",
-      title: "Login Successful",
-      message: `You have successfully logged in to app ${app.name} with device ${device.device_name || device.device_id || device.id}`,
-      metadata: {
-        appId: app.id,
-        deviceId: device.device_id || device.id,
-      },
-      createdAt: new Date(),
-    });
-    
+
+    // send internal notification via the notifications POST endpoint
+    (async () => {
+      try {
+        const notifPayload = {
+          user_id: user.id,
+          type: "success",
+          title: "Login Successful",
+          message: `You have successfully logged in to app ${app.name} with device ${device.device_name || device.device_id || device.id}`,
+          metadata: {
+            appId: app.id,
+            deviceId: device.device_id || device.id,
+          },
+          createdAt: new Date(),
+        } as any;
+
+        const notifHeaders = await returnInternalSigniture(service, 'POST', '/notifications', notifPayload);
+        await axios.post(`${base}/notifications`, notifPayload, { headers: notifHeaders });
+      } catch (err: any) {
+        // don't fail login if notification fails
+        console.error("Failed to create internal notification", err?.response?.data || err.message || err);
+      }
+    })();
+
     res.status(200).json(codeChallange ?? response);
   } catch (err) {
-    notificationService.stopWatching();
-    notificationService.clearObservers();
     next(err);
   }
 };

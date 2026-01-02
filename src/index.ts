@@ -28,12 +28,14 @@ async function start() {
   const appRoutes = (await import("./routes/apps.routes")).default;
   const sessionRoutes = (await import("./routes/sessions.routes")).default;
   const deviceRoutes = (await import("./routes/devices.routes")).default;
+  const notificationRoutes = (await import("./routes/notification.routes")).default;
 
   app.use("/auth", authRoutes);
   app.use("/users", userRoutes);
   app.use("/apps", appRoutes);
   app.use("/sessions", sessionRoutes);
   app.use("/devices", deviceRoutes);
+  app.use("/notifications", notificationRoutes);
   app.use(notFound);
   app.use(errorHandler);
 
@@ -41,6 +43,16 @@ async function start() {
   const httpServer = createServer(app);
 
   initSocket(httpServer);
+
+  try {
+    const { NotificationService } = await import("./services/notification/notification.service");
+    const { SelfObserver } = await import("./services/notification/observers/self.observer");
+    const notifSvc = new NotificationService();
+    notifSvc.addObserver(new SelfObserver());
+    notifSvc.startWatching();
+  } catch (err) {
+    logger.warn("Failed to start notification watcher", err);
+  }
 
   httpServer.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
 }
