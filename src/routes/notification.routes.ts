@@ -4,6 +4,7 @@ import {
   createNotificationSchema,
   listNotificationQuery,
   notificationIdParam,
+  unreadCountQuery,
   updateNotificationSchema,
   updateReadSchema,
 } from "../validators/notification.validators";
@@ -14,6 +15,7 @@ import {
   readNotificationController,
   updateNotificationController,
   deleteNotificationController,
+  getUnreadCountController,
 } from "../controllers/notification.controller";
 import { rateLimiter } from "../middlewares/rateLimiter";
 import { authorizeIdentity } from "../middlewares/identityAuthorizer";
@@ -39,6 +41,15 @@ router.get(
   rateLimiter({ windowSeconds: 60, maxRequests: 120, keyGenerator: (req) => `notification:${req.auth!.user_id}:device:${req.auth!.device_id}` }),
   validateQuery(listNotificationQuery),
   listNotificationsController
+); 
+
+router.get(
+  "/unread",
+  authenticateMiddleware,
+  authorizeIdentity({ allowAdmin: true, allowPartial: true }),
+  rateLimiter({ windowSeconds: 60, maxRequests: 120, keyGenerator: (req) => `notification:unread:${req.auth!.user_id}:device:${req.auth!.device_id}` }),
+  validateQuery(unreadCountQuery),
+  getUnreadCountController
 );
 
 router.get(

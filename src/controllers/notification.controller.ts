@@ -87,3 +87,15 @@ export const deleteNotificationController = async (req: Request, res: Response, 
     next(err);
   }
 };
+
+export const getUnreadCountController = async (req: Request, res: Response, next: NextFunction) => {
+  if (!req.auth) throw new AuthError("Authentication was not provided", 401);
+  try {
+    const svc = new NotificationService();
+    const q = req.query as any;
+    const count = await svc.getUnreadCount(req.auth.user_id as string, q.appId, q.deviceId);
+    res.status(200).json({ unreadCount: count });
+  } catch (err) {
+    next(err);
+  }
+};

@@ -17,6 +17,11 @@ export const listNotificationQuery = Joi.object({
   deviceId: Joi.string().optional(),
 });
 
+export const unreadCountQuery = Joi.object({
+  appId: Joi.string().optional(),
+  deviceId: Joi.string().optional(),
+});
+
 export const notificationIdParam = Joi.object({
   id: Joi.string().required(),
 });

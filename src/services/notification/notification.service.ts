@@ -5,6 +5,7 @@ import ListNotificationService from "./listNotification.service";
 import UpdateReadService from "./readNotification.service";
 import UpdateNotificationService from "./updateNotification.service";
 import DeleteNotificationService from "./deleteNotification.service";
+import GetUnreadCountService from "./getUnreadCount.service";
 interface Subject {
     addObserver(observer: Observer): void;
     removeObserver(observer: Observer): void;
@@ -21,7 +22,8 @@ export class NotificationService implements Subject {
         private listSvc = ListNotificationService,
         private updateReadSvc = UpdateReadService,
         private updateSvc = UpdateNotificationService,
-        private deleteSvc = DeleteNotificationService
+        private deleteSvc = DeleteNotificationService,
+        private unreadCountSvc = GetUnreadCountService
     ) {}
 
     addObserver(observer: Observer): void {
@@ -73,5 +75,9 @@ export class NotificationService implements Subject {
 
     public async deleteNotification(notificationId: string) {
         return this.deleteSvc.execute(notificationId);
+    }
+
+    public async getUnreadCount(userId: string, appId?: string, deviceId?: string) {
+        return this.unreadCountSvc.execute(userId, appId, deviceId);
     }
 }
