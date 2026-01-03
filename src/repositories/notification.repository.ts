@@ -177,11 +177,57 @@ export class NotificationRepository {
       await mongodb.connect();
       const db = await this.getNotificationCollection();
       const _id = this.toObjectId(notificationId);
+
+      // find the notification first to get user/app/device and read status
+      const doc: any = await db.findOne({ _id } as any);
+      if (!doc) return false;
+
+      // if the notification was unread, decrement the unread counter
+      if (!doc.read) {
+        try {
+          await this.incrementUnreadCounter(
+            doc.userId,
+            doc.metadata?.appId,
+            doc.metadata?.deviceId,
+            -1
+          );
+        } catch (err) {
+          // log and continue with delete to avoid leaving stale notifications
+          console.error("Failed to decrement unread counter for deleted notification", err);
+        }
+      }
+
       const res = await db.deleteOne({ _id } as any);
       return res.deletedCount > 0;
     } catch (err: any) {
       if (err instanceof InvalidNotificationIdError) throw err;
       throw new NotificationRepositoryError("Failed to delete notification", err?.message || err);
+    }
+  }
+
+  /**
+   * Retrieve the unread counter document (or null) for the given user/app/device
+   */
+  public async getUnreadCounter(userId: string, appId?: string, deviceId?: string): Promise<UnreadCounterDocument | null> {
+    try {
+      await mongodb.connect();
+      const filter: any = { userId };
+      if (appId) filter.appId = appId;
+      if (deviceId) filter.deviceId = deviceId;
+      const db = await this.getUnreadCounterCollection();
+      const doc = await db.findOne(filter) as any;
+      if (!doc) return null;
+      const result: UnreadCounterDocument = {
+        _id: doc._id?.toString(),
+        userId: doc.userId,
+        appId: doc.appId,
+        deviceId: doc.deviceId,
+        unreadCount: doc.unreadCount || 0,
+        updatedAt: doc.updatedAt,
+      };
+      return result;
+    } catch (err: any) {
+      throw new NotificationRepositoryError("Failed to retrieve unread counter", err?.message || err);
     }
   }
 
