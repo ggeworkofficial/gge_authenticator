@@ -25,11 +25,12 @@ export class NotificationService implements Subject {
     ) {}
 
     addObserver(observer: Observer): void {
-        this.observers.push(observer);
+         if (!this.observers.includes(observer)) this.observers.push(observer);
+         console.log("Observer added. Total observers:", this.observers.length);
     }
 
     removeObserver(observer: Observer): void {
-        this.observers = this.observers.filter(obs => obs !== observer);
+        if (this.observers.includes(observer)) this.observers = this.observers.filter(obs => obs !== observer);
     }
 
     clearObservers(): void {
@@ -45,8 +46,8 @@ export class NotificationService implements Subject {
         return inserted; 
     }
 
-    startWatching(): void {
-        this.changeStream = this.notificationRepo.watchInserts((notification) => {
+    async startWatching(): Promise<void> {
+        this.changeStream = await this.notificationRepo.watchInserts((notification) => {
             this.notifyObservers(notification);
         });
     }

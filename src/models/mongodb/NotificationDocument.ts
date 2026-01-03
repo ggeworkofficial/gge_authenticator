@@ -17,6 +17,7 @@ export interface NotificationDocument {
 };
 
 
-export function getNotificationCollection() {
-    return mongodb.getDB().collection<NotificationDocument>("notifications");
+export async function getNotificationCollection() {
+    const db = await MongoDB.getInstance().waitForDB();
+    return db.collection<NotificationDocument>("notifications");
 }

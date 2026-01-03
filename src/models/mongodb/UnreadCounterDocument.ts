@@ -11,15 +11,13 @@ export interface UnreadCounterDocument {
   updatedAt: Date;
 }
 
-export function getUnreadCounterCollection() {
-  return mongodb
-    .getDB()
-    .collection<UnreadCounterDocument>("unread_counters");
+export async function getUnreadCounterCollection() {
+  const db = await MongoDB.getInstance().waitForDB();
+  return db.collection<UnreadCounterDocument>("unread_counters");
 }
 
 export async function initUnreadCounterIndexes() {
-  const collection = getUnreadCounterCollection();
-
+  const collection = await getUnreadCounterCollection();
   await collection.createIndex(
     { userId: 1, appId: 1, deviceId: 1 },
     {

@@ -5,23 +5,31 @@ import {
   NotificationRepositoryError,
   InvalidNotificationIdError,
 } from "../errors/notification.error";
+import { MongoDB } from "../connections/mongodb";
 
-const UnreadCounter = getUnreadCounterCollection();
-const Notification = getNotificationCollection();
+const mongodb = MongoDB.getInstance();
 export class NotificationRepository {
-  private collection = Notification;
   /**
    * Start watching insert events on the notifications collection.
    * onInsert will be called with the full inserted document.
    * Returns the changeStream so caller can close it when needed.
    */
+  public async getNotificationCollection() {
+    return await getNotificationCollection();
+  }
 
-  public watchInserts(onInsert: (doc: NotificationDocument) => void) {
+  public async getUnreadCounterCollection() {
+    return await getUnreadCounterCollection();
+  }
+
+  public async watchInserts(onInsert: (doc: NotificationDocument) => void) {
+    await mongodb.connect();
     const pipeline = [
       { $match: { operationType: "insert" } },
     ];
 
-    const changeStream = this.collection.watch(pipeline, { fullDocument: "updateLookup" });
+    const db = await getNotificationCollection();
+    const changeStream = db.watch(pipeline, { fullDocument: "updateLookup" });
     console.log("Started watching notification inserts");
     changeStream.on("change", (change: any) => {
       try {
@@ -34,7 +42,7 @@ export class NotificationRepository {
       }
     });
 
-    changeStream.on("error", (err) => {
+    changeStream.on("error", (err: any) => {
       console.error("notification changeStream error", err);
     });
 
@@ -51,6 +59,7 @@ export class NotificationRepository {
     deviceId?: string,
     delta = 1
   ): Promise<UnreadCounterDocument> {
+    await mongodb.connect();
     const filter: any = { userId };
     if (appId) filter.appId = appId;
     if (deviceId) filter.deviceId = deviceId;
@@ -62,8 +71,9 @@ export class NotificationRepository {
     } as any;
 
     try {
-      await UnreadCounter.updateOne(filter, update, { upsert: true });
-      const doc = await UnreadCounter.findOne(filter) as any;
+      const db = await getUnreadCounterCollection();
+      await db.updateOne(filter, update, { upsert: true });
+      const doc = await db.findOne(filter) as any;
 
       // normalize _id to string like other models
       const result: UnreadCounterDocument = {
@@ -103,9 +113,10 @@ export class NotificationRepository {
         expiresAt: data.expiresAt,
       };
 
-      const res = await this.collection.insertOne(payload as any);
+      const db = await this.getNotificationCollection();
+      const res = await db.insertOne(payload as any);
       await this.incrementUnreadCounter(data.userId!, data.metadata?.appId, data.metadata?.deviceId, 1);
-      const inserted = await this.collection.findOne({ _id: res.insertedId } as any) as any;
+      const inserted = await db.findOne({ _id: res.insertedId } as any) as any;
       return this.normalize(inserted);
     } catch (err: any) {
       throw new NotificationRepositoryError("Failed to insert notification", err?.message || err);
@@ -114,9 +125,11 @@ export class NotificationRepository {
 
   public async updateRead(notificationId: string, read: boolean): Promise<boolean> {
     try {
+      await mongodb.connect();
       const _id = this.toObjectId(notificationId);
 
-    const res = await this.collection.findOneAndUpdate(
+    const db = await this.getNotificationCollection();
+    const res = await db.findOneAndUpdate(
       { _id, read: false },              // only if unread
       { $set: { read: true } },
       { returnDocument: "before" }       // get OLD doc
@@ -144,12 +157,14 @@ export class NotificationRepository {
 }
   public async updateNotification(notificationId: string, data: Partial<NotificationDocument>): Promise<NotificationDocument | null> {
     try {
+      await mongodb.connect();
       const _id = this.toObjectId(notificationId);
       const update = { ...data } as any;
       // prevent overriding _id
       delete update._id;
-      await this.collection.updateOne({ _id } as any, { $set: update } as any);
-      const doc = await this.collection.findOne({ _id } as any) as any;
+      const db = await this.getNotificationCollection();
+      await db.updateOne({ _id } as any, { $set: update } as any);
+      const doc = await db.findOne({ _id } as any) as any;
       return doc ? this.normalize(doc) : null;
     } catch (err: any) {
       if (err instanceof InvalidNotificationIdError) throw err;
@@ -159,8 +174,10 @@ export class NotificationRepository {
 
   public async deleteNotification(notificationId: string): Promise<boolean> {
     try {
+      await mongodb.connect();
+      const db = await this.getNotificationCollection();
       const _id = this.toObjectId(notificationId);
-      const res = await this.collection.deleteOne({ _id } as any);
+      const res = await db.deleteOne({ _id } as any);
       return res.deletedCount > 0;
     } catch (err: any) {
       if (err instanceof InvalidNotificationIdError) throw err;
@@ -174,12 +191,14 @@ export class NotificationRepository {
    */
   public async listNotifications(userId: string, limit = 20, lastId?: string, appId?: string, deviceId?: string) {
     try {
+      await mongodb.connect();
       const filter: any = { userId };
       if (lastId) {
         filter._id = { $lt: this.toObjectId(lastId) };
       }
 
-      const cursor = this.collection.find(filter).sort({ _id: -1 }).limit(limit + 1);
+      const db = await this.getNotificationCollection();
+      const cursor = db.find(filter).sort({ _id: -1 }).limit(limit + 1);
       const docs = await cursor.toArray() as any[];
 
       let nextCursor: string | undefined = undefined;

@@ -8,9 +8,6 @@ export const createNotificationController = async (req: Request, res: Response, 
   const body = req.body as any;
   const svc = new NotificationService();
   try {
-    svc.addObserver(new SelfObserver());
-    svc.startWatching();
-
     const payload: Partial<NotificationDocument> = {
       userId: body.user_id,
       type: body.type,
@@ -24,8 +21,6 @@ export const createNotificationController = async (req: Request, res: Response, 
     const inserted = await svc.insertNotification(payload);
     res.status(201).json({ notification: inserted });
   } catch (err) {
-    svc.stopWatching();
-    svc.clearObservers();
     next(err);
   }
 };

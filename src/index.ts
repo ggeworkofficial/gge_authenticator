@@ -9,14 +9,20 @@ import { RedisClient } from "./connections/redis";
 import { createServer } from "http";
 import { initSocket } from "./socket/socket.server";
 import { initUnreadCounterIndexes } from "./models/mongodb/UnreadCounterDocument";
-const mongodb = MongoDB.getInstance();
+import { NotificationService } from "./services/notification/notification.service";
+import { SelfObserver } from "./services/notification/observers/self.observer";
+
+ 
 
 const logger = Logger.getLogger();
 
 dotenv.config();
 async function start() {
-  await mongodb.connect();
-  await initUnreadCounterIndexes();
+  const mongodb = await MongoDB.getInstance().waitForDB();
+  const notificationService = new NotificationService();
+  notificationService.addObserver(new SelfObserver());
+  await notificationService.startWatching();
+  await initUnreadCounterIndexes(); 
   RedisClient.getInstance();
 
   const app = express();
@@ -43,16 +49,6 @@ async function start() {
   const httpServer = createServer(app);
 
   initSocket(httpServer);
-
-  try {
-    const { NotificationService } = await import("./services/notification/notification.service");
-    const { SelfObserver } = await import("./services/notification/observers/self.observer");
-    const notifSvc = new NotificationService();
-    notifSvc.addObserver(new SelfObserver());
-    notifSvc.startWatching();
-  } catch (err) {
-    logger.warn("Failed to start notification watcher", err);
-  }
 
   httpServer.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
 }
