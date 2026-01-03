@@ -6,14 +6,23 @@ import "reflect-metadata";
 import { Logger } from "./utils/logger";
 import { MongoDB } from "./connections/mongodb";
 import { RedisClient } from "./connections/redis";
+import { createServer } from "http";
+import { initSocket } from "./socket/socket.server";
+import { initUnreadCounterIndexes } from "./models/mongodb/UnreadCounterDocument";
+import { NotificationService } from "./services/notification/notification.service";
+import { SelfObserver } from "./services/notification/observers/self.observer";
 
-const mongodb = MongoDB.getInstance();
+ 
 
 const logger = Logger.getLogger();
 
 dotenv.config();
 async function start() {
-  await mongodb.connect();
+  const mongodb = await MongoDB.getInstance().waitForDB();
+  const notificationService = new NotificationService();
+  notificationService.addObserver(new SelfObserver());
+  await notificationService.startWatching();
+  await initUnreadCounterIndexes(); 
   RedisClient.getInstance();
 
   const app = express();
@@ -25,17 +34,23 @@ async function start() {
   const appRoutes = (await import("./routes/apps.routes")).default;
   const sessionRoutes = (await import("./routes/sessions.routes")).default;
   const deviceRoutes = (await import("./routes/devices.routes")).default;
+  const notificationRoutes = (await import("./routes/notification.routes")).default;
 
   app.use("/auth", authRoutes);
   app.use("/users", userRoutes);
   app.use("/apps", appRoutes);
   app.use("/sessions", sessionRoutes);
   app.use("/devices", deviceRoutes);
+  app.use("/notifications", notificationRoutes);
   app.use(notFound);
   app.use(errorHandler);
 
   const PORT = process.env.PORT;
-  app.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
+  const httpServer = createServer(app);
+
+  initSocket(httpServer);
+
+  httpServer.listen(PORT, () => logger.info(`Server running on port ${PORT}`));
 }
 
 start();

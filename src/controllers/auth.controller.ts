@@ -33,15 +33,15 @@ export const loginController = async (req: Request, res: Response, next: NextFun
       email: payload.email,
       password_hash: payload.password_hash,
     });
+
     const devicePayload = {
       user_id: user.id,
       device_id: payload.device_id,
       device_name: payload.device_name,
       device_type: payload.device_type,
     };
-    
-    headers = await returnInternalSigniture(service, 'POST', '/devices', devicePayload);
 
+    headers = await returnInternalSigniture(service, 'POST', '/devices', devicePayload);
     const device = await handleDeviceApi(base, devicePayload, headers);
 
     headers = await returnInternalSigniture(service, 'GET', `/apps/${payload.app_id}`);
@@ -64,9 +64,33 @@ export const loginController = async (req: Request, res: Response, next: NextFun
       device_id: device.device_id,
       app_id: app.id,
       ...session,
-    }
-    
+    };
+
     const codeChallange = await returnCodeChallange(service, response, code_challange);
+
+    // send internal notification via the notifications POST endpoint
+    (async () => {
+      try {
+        const notifPayload = {
+          user_id: user.id,
+          type: "success",
+          title: "Login Successful",
+          message: `You have successfully logged in to app ${app.name} with device ${device.device_name || device.device_id || device.id}`,
+          metadata: {
+            appId: app.id,
+            deviceId: device.device_id || device.id,
+          },
+          createdAt: new Date(),
+        } as any;
+
+        const notifHeaders = await returnInternalSigniture(service, 'POST', '/notifications', notifPayload);
+        await axios.post(`${base}/notifications`, notifPayload, { headers: notifHeaders });
+      } catch (err: any) {
+        // don't fail login if notification fails
+        console.error("Failed to create internal notification", err?.response?.data || err.message || err);
+      }
+    })();
+
     res.status(200).json(codeChallange ?? response);
   } catch (err) {
     next(err);
