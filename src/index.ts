@@ -11,6 +11,7 @@ import { initSocket } from "./socket/socket.server";
 import { initUnreadCounterIndexes } from "./models/mongodb/UnreadCounterDocument";
 import { NotificationService } from "./services/notification/notification.service";
 import { SelfObserver } from "./services/notification/observers/self.observer";
+import { expieresAtIndex } from "./models/mongodb/TwoFADocument";
 
  
 
@@ -23,6 +24,7 @@ async function start() {
   notificationService.addObserver(new SelfObserver());
   await notificationService.startWatching();
   await initUnreadCounterIndexes(); 
+  await expieresAtIndex();
   RedisClient.getInstance();
 
   const app = express();
