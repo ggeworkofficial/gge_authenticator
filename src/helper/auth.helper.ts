@@ -123,14 +123,15 @@ export const handleSessionApi = async (
 };
 
 
-export const returnCodeChallange = async (service: any, response: any, code_challange?: string, ) => {
+export const returnRespLoadKey = async (service: any, response: any, requirement: {pkceRequired: boolean, twofaRequired: boolean}, code_challange?: string, ) => {
   if (!service || !(service instanceof AuthService)) {
     service = new AuthService()
   }
   if (code_challange) {
-      const secret_key = await service.saveCodeChalleng(code_challange, response);
+      const secret_key = await service.saveResponseLoad(code_challange, requirement, response);
       return {
         secret_key,
+        requirement,
         message: "Waiting for verification"
       };
   }

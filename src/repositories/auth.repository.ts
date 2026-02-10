@@ -3,6 +3,7 @@ import { User } from "../models/postgres/User";
 import { Transaction } from "sequelize";
 import { Token } from "../models/mongodb/TokenDocument";
 import { RedisClient } from "../connections/redis";
+import { AuthError } from "../errors/auth.error";
 
 export class AuthRepository {
   private userRepo = new UserRepository();
@@ -77,11 +78,12 @@ export class AuthRepository {
   }
 
 
-  public async storeCodeChallange(key: string, data: {code_challange: string, response: any}): Promise<void> {
+  public async storeResponseLoad(key: string, data: Record<string, any>): Promise<void> {
     await this.redis.set(key, JSON.stringify(data), "EX", 300);
   }
 
-  public async findCodeChallange(key: string): Promise<string> {
+
+  public async findResponseLoad(key: string): Promise<string> {
     return await this.redis.get(key) as string;
   }
 }

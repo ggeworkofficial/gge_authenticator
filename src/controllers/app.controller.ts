@@ -2,7 +2,7 @@ import { NextFunction, Request, Response } from "express";
 import { AppService } from "../services/app.service";
 import { UserApp } from "../models/postgres/UserApp";
 import { AuthError } from "../errors/auth.error";
-import { returnCodeChallange } from "../helper/auth.helper";
+import { returnRespLoadKey } from "../helper/auth.helper";
 
 
 export const appCreateController = async (req: Request, res: Response, next: NextFunction) => {
@@ -35,7 +35,7 @@ export const appGetController = async (req: Request, res: Response, next: NextFu
     try {
         const appService = new AppService();
         const app = await appService.getAppById(id);
-        const codeChallangeSecret = await returnCodeChallange(null, app, code_challange);
+        const codeChallangeSecret = await returnRespLoadKey(null, app, {pkceRequired: true, twofaRequired: false}, code_challange);
         res.status(200).json({app: codeChallangeSecret ?? app});
     } catch (error) {
         next(error);

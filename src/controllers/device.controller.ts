@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { DeviceService } from "../services/device.service";
 import { AuthError } from "../errors/auth.error";
-import { returnCodeChallange } from "../helper/auth.helper";
+import { returnRespLoadKey } from "../helper/auth.helper";
 
 
 export const deviceCreateController = async (req: Request, res: Response, next: NextFunction) => {
@@ -10,7 +10,7 @@ export const deviceCreateController = async (req: Request, res: Response, next: 
   try { 
     const service = new DeviceService();
     const device = await service.createDevice(data);
-    const codeChallangeSecret = await returnCodeChallange(null, device, code_challange);
+    const codeChallangeSecret = await returnRespLoadKey(null, device, {pkceRequired: true, twofaRequired: false}, code_challange);
     res.status(201).json({device: codeChallangeSecret ?? device});
   } catch (error) {
     next(error);
@@ -24,7 +24,7 @@ export const deviceListController = async (req: Request, res: Response, next: Ne
     
     const service = new DeviceService();
     const devices = await service.getDevices({ device_id: filter.device_id, user_id: filter.user_id });
-    const codeChallanger = await returnCodeChallange(null, devices, code_challange);
+    const codeChallanger = await returnRespLoadKey(null, devices, {pkceRequired: true, twofaRequired: false}, code_challange);
     res.status(200).json({devices: codeChallanger ?? devices});
   } catch (error) {
     next(error);

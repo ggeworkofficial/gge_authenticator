@@ -1,7 +1,7 @@
 import { NextFunction, Request, Response } from "express";
 import { UserService } from "../services/user.service";
 import { AuthError } from "../errors/auth.error";
-import { returnCodeChallange } from "../helper/auth.helper";
+import { returnRespLoadKey } from "../helper/auth.helper";
 
 export const userCreateController = async (req: Request, res: Response, next: NextFunction) => {
   const userData = req.body;
@@ -10,7 +10,7 @@ export const userCreateController = async (req: Request, res: Response, next: Ne
   try {
     const service = new UserService();
     const user = await service.createUser(userData); 
-    const codeChallangeSecret = await returnCodeChallange(null, user, code_challange);
+    const codeChallangeSecret = await returnRespLoadKey(null, user, {pkceRequired: true, twofaRequired: false}, code_challange);
     res.status(201).json(codeChallangeSecret ?? user);
   } catch (error) {
     next(error);

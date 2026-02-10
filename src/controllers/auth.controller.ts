@@ -5,7 +5,7 @@ import { AdminAuthService } from "../services/auth/admin.service";
 import {authenticateRequest, AuthPayload } from "../helper/auth.helper"; 
 import { MainError } from "../errors/main.error";
 import { AuthError } from "../errors/auth.error";
-import { getAuthPayload, handleAppApi, handleDeviceApi, handleSessionApi, returnCodeChallange, returnInternalSigniture } from "../helper/auth.helper";
+import { getAuthPayload, handleAppApi, handleDeviceApi, handleSessionApi, returnRespLoadKey, returnInternalSigniture } from "../helper/auth.helper";
 
 export const getBaseUrl = () => process.env.BASE_URL || `http://localhost:${process.env.PORT || 3000}`;
 
@@ -66,7 +66,7 @@ export const loginController = async (req: Request, res: Response, next: NextFun
       ...session,
     };
 
-    const codeChallange = await returnCodeChallange(service, response, code_challange);
+    const codeChallange = await returnRespLoadKey(service, response, {pkceRequired: true, twofaRequired: true}, code_challange);
 
     // send internal notification via the notifications POST endpoint
     (async () => {
@@ -149,7 +149,7 @@ export const registerController = async (req: Request, res: Response, next: Next
       headers = await returnInternalSigniture(null, 'POST', '/auth/login', loginPayload);
       const loginResp = await axios.post(`${base}/auth/login`, loginPayload, {headers});
 
-      const codeChallanger = await returnCodeChallange(null, loginResp.data, code_challange);
+      const codeChallanger = await returnRespLoadKey(null, loginResp.data, {pkceRequired: true, twofaRequired: true}, code_challange);
       return res.status(loginResp.status || 200).json(codeChallanger ?? loginResp.data);
     } catch (err: any) {
       const apiError = err?.response?.data;
@@ -202,7 +202,7 @@ export const authenticateController = async (
       service,
     });
 
-    const codeChallangeKey = await returnCodeChallange(service, authResult, code_challanger);
+    const codeChallangeKey = await returnRespLoadKey(service, authResult, {pkceRequired: true, twofaRequired: false}, code_challanger);
     res.status(200).json(codeChallangeKey ?? authResult);
   } catch (err) {
     next(err);

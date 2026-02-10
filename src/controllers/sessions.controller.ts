@@ -1,7 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { SessionService } from "../services/session.service";
 import { AuthError } from "../errors/auth.error";
-import { returnCodeChallange } from "../helper/auth.helper";
+import { returnRespLoadKey } from "../helper/auth.helper";
 
 export const createSessionController = async (req: Request, res: Response, next: NextFunction) => {
   const { user_id, app_id, device_id, client_type, accessTokenTtl, refreshTokenttl } = req.body as any;
@@ -17,7 +17,7 @@ export const createSessionController = async (req: Request, res: Response, next:
       refreshTtl: refreshTokenttl ? Number(refreshTokenttl) : undefined,
     });
 
-    const codeChallanger = await returnCodeChallange(null, result.session, code_challange);
+    const codeChallanger = await returnRespLoadKey(null, result.session, {pkceRequired: true, twofaRequired: false}, code_challange);
     res.status(201).json(codeChallanger ?? result.session);
   } catch (err) {
     next(err);

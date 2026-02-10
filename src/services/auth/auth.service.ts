@@ -39,8 +39,8 @@ export class AuthService {
   }
 
   // preserve existing typo used in helper: saveCodeChalleng
-  public async saveCodeChalleng(code_challange: string, response: any) {
-    return this.pkce.saveCodeChallenge(code_challange, response);
+  public async saveResponseLoad(code_challange: string, requirement: {pkceRequired: boolean, twofaRequired: boolean}, response: any) {
+    return this.pkce.saveResponseLoad(code_challange, requirement, response);
   }
 
   public async authenticateAppHmac(payload: any) {
@@ -71,9 +71,7 @@ export class AuthService {
     return this.pkce.verifyPkce(secret_key, code_verifier);
   }
 
-  saveCodeChallenge(code_challenge: string, response: any) {
-    return this.pkce.saveCodeChallenge(code_challenge, response);
-  }
+
 
   // App HMAC
   authenticateApp(payload: any) {
